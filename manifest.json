@@ -2,20 +2,21 @@
     "name": "ひまわり活動 - 顧客管理システム",
     "short_name": "ひまわり活動",
     "description": "ヤクルトレディのための顧客管理Webアプリケーション",
-    "start_url": "/",
+    "start_url": "./",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#FFFBEB",
     "theme_color": "#F59E0B",
     "orientation": "portrait",
     "icons": [
         {
-            "src": "icon-192.png",
+            "src": "./icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "icon-512.png",
+            "src": "./icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
