@@ -199,20 +199,20 @@
                         <textarea id="reg-memo" rows="4" placeholder="見た目、提案内容、会話内容など" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent" oninput="markFormDirty()"></textarea>
                     </div>
 
-                    <!-- 初回訪問日時 -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
-                            <div class="flex items-center gap-1">
-                                <button onclick="changeDate('reg-date', -1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">◀</button>
-                                <input type="date" id="reg-date" class="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-center">
-                                <button onclick="changeDate('reg-date', 1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">▶</button>
-                            </div>
+                    <!-- 初回訪問日 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeDate('reg-date', -1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">◀</button>
+                            <input type="date" id="reg-date" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center">
+                            <button onclick="changeDate('reg-date', 1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">▶</button>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
-                            <select id="reg-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
-                        </div>
+                    </div>
+
+                    <!-- 訪問時刻 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
+                        <select id="reg-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
                     </div>
 
                     <!-- 登録ボタン -->
@@ -342,19 +342,20 @@
                     <span>➕</span> 新しい訪問記録を追加
                 </h2>
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
-                            <div class="flex items-center gap-1">
-                                <button onclick="changeDate('detail-visit-date', -1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">◀</button>
-                                <input type="date" id="detail-visit-date" class="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-center">
-                                <button onclick="changeDate('detail-visit-date', 1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">▶</button>
-                            </div>
+                    <!-- 訪問日 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeDate('detail-visit-date', -1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">◀</button>
+                            <input type="date" id="detail-visit-date" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-center">
+                            <button onclick="changeDate('detail-visit-date', 1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">▶</button>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
-                            <select id="detail-visit-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
-                        </div>
+                    </div>
+
+                    <!-- 訪問時刻 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
+                        <select id="detail-visit-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
