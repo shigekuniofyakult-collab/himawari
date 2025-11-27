@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ひまわり活動 - 顧客管理システム</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#F59E0B">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .tab-active { background-color: #F59E0B; color: white; }
+        .tab-inactive { background-color: #FEF3C7; color: #92400E; }
+        .customer-card { transition: all 0.2s ease; }
+        .customer-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .checkbox-label { cursor: pointer; user-select: none; }
+        .checkbox-label input:checked + span { background-color: #F59E0B; color: white; border-color: #F59E0B; }
+        .toast { animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s; }
+        @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .modal-overlay { background-color: rgba(0,0,0,0.5); }
+        input[type="date"], input[type="time"], select { min-height: 44px; }
+        .visit-badge-normal { background-color: #9CA3AF; }
+        .visit-badge-warning { background-color: #F97316; }
+        .visit-badge-danger { background-color: #EF4444; }
+        .kana-btn { min-width: 40px; }
+        @media (max-width: 640px) { .kana-btn { min-width: 32px; font-size: 0.875rem; } }
+    </style>
+</head>
+<body class="bg-amber-50 min-h-screen">
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden">
+        <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 toast">
+            <span>✅</span>
+            <span id="toast-message">登録しました</span>
+        </div>
+    </div>
+
+    <!-- Backup Reminder Modal -->
+    <div id="backup-modal" class="fixed inset-0 z-40 hidden">
+        <div class="modal-overlay absolute inset-0"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative z-10">
+                <div class="text-center">
+                    <div class="text-4xl mb-3">⚠️</div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">バックアップのお知らせ</h3>
+                    <p id="backup-message" class="text-gray-600 mb-4">最後のバックアップから7日経過しています</p>
+                    <div class="flex gap-3">
+                        <button onclick="dismissBackupReminder()" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium">後で</button>
+                        <button onclick="exportToExcel(); closeBackupModal();" class="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium">今すぐ保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Visit Modal -->
+    <div id="edit-visit-modal" class="fixed inset-0 z-40 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeEditVisitModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">訪問記録を編集</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
+                        <input type="date" id="edit-visit-date" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
+                        <select id="edit-visit-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
+                        <textarea id="edit-visit-memo" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closeEditVisitModal()" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
+                    <button onclick="saveEditedVisit()" class="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-amber-400 to-yellow-400 shadow-md sticky top-0 z-30">
+        <div class="max-w-2xl mx-auto px-4 py-3">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🌻</span>
+                <div>
+                    <h1 class="text-xl font-bold text-amber-900">ひまわり活動</h1>
+                    <p class="text-xs text-amber-700">顧客管理システム</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="bg-white shadow-sm sticky top-[68px] z-20">
+        <div class="max-w-2xl mx-auto px-4">
+            <div class="flex">
+                <button onclick="showScreen('register')" id="tab-register" class="flex-1 py-3 text-center font-medium text-sm tab-active rounded-t-lg">
+                    新規顧客登録
+                </button>
+                <button onclick="showScreen('list')" id="tab-list" class="flex-1 py-3 text-center font-medium text-sm tab-inactive rounded-t-lg">
+                    顧客一覧
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-2xl mx-auto px-4 py-6">
+        <!-- Register Screen -->
+        <div id="screen-register" class="space-y-6">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>📝</span> 新しい顧客を登録
+                </h2>
+                
+                <div class="space-y-5">
+                    <!-- 顧客名 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">顧客名 <span class="text-gray-400 text-xs">（任意）</span></label>
+                        <input type="text" id="reg-name" placeholder="例: 田中様、〇〇マンション3階の方" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                    </div>
+
+                    <!-- 対面者 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">対面者 <span class="text-gray-400 text-xs">（任意・複数選択可）</span></label>
+                        <div class="flex flex-wrap gap-2" id="reg-contact-group">
+                            <label class="checkbox-label"><input type="checkbox" value="奥" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="夫" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">夫</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おば" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おじ" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="子" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">子</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-contact')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                        </div>
+                        <input type="text" id="reg-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                    </div>
+
+                    <!-- 住所 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">住所 <span class="text-gray-400 text-xs">（任意）</span></label>
+                        <input type="text" id="reg-address" placeholder="例: 〇〇町1-2-3" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                    </div>
+
+                    <!-- ニーズ -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ニーズ <span class="text-gray-400 text-xs">（任意・複数選択可）</span></label>
+                        <div class="flex flex-wrap gap-2" id="reg-needs-group">
+                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-needs')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                        </div>
+                        <input type="text" id="reg-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                    </div>
+
+                    <!-- 訪問メモ -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ <span class="text-gray-400 text-xs">（任意）</span></label>
+                        <textarea id="reg-memo" rows="4" placeholder="見た目、提案内容、会話内容など" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent"></textarea>
+                    </div>
+
+                    <!-- 初回訪問日時 -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
+                            <div class="flex items-center gap-1">
+                                <button onclick="changeDate('reg-date', -1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">◀</button>
+                                <input type="date" id="reg-date" class="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-center">
+                                <button onclick="changeDate('reg-date', 1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">▶</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
+                            <select id="reg-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+                        </div>
+                    </div>
+
+                    <!-- 登録ボタン -->
+                    <button onclick="registerCustomer()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
+                        🌻 登録する
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Screen -->
+        <div id="screen-list" class="hidden space-y-4">
+            <!-- Search -->
+            <div class="bg-white rounded-xl shadow-md p-4">
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                    <input type="text" id="search-input" placeholder="名前、住所、訪問メモで検索..." oninput="filterCustomers()" class="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- 50音 Filter -->
+            <div class="bg-white rounded-xl shadow-md p-4">
+                <div class="flex flex-wrap gap-1 justify-center" id="kana-filter">
+                    <button onclick="setKanaFilter('全て')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-amber-500 text-white" data-kana="全て">全て</button>
+                    <button onclick="setKanaFilter('ア')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ア">ア</button>
+                    <button onclick="setKanaFilter('カ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="カ">カ</button>
+                    <button onclick="setKanaFilter('サ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="サ">サ</button>
+                    <button onclick="setKanaFilter('タ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="タ">タ</button>
+                    <button onclick="setKanaFilter('ナ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ナ">ナ</button>
+                    <button onclick="setKanaFilter('ハ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ハ">ハ</button>
+                    <button onclick="setKanaFilter('マ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="マ">マ</button>
+                    <button onclick="setKanaFilter('ヤ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ヤ">ヤ</button>
+                    <button onclick="setKanaFilter('ラ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ラ">ラ</button>
+                    <button onclick="setKanaFilter('ワ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ワ">ワ</button>
+                    <button onclick="setKanaFilter('その他')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="その他">他</button>
+                </div>
+                <div class="mt-3 flex justify-center">
+                    <button onclick="setFollowUpFilter()" id="followup-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
+                        🔴 要フォロー (15日以上)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Customer Count -->
+            <div class="text-center text-gray-600 text-sm">
+                <span id="customer-count">0</span>件の顧客
+            </div>
+
+            <!-- Customer Cards -->
+            <div id="customer-cards" class="space-y-3">
+                <!-- Cards will be inserted here -->
+            </div>
+
+            <!-- Data Management Buttons -->
+            <div class="bg-white rounded-xl shadow-md p-4 space-y-3">
+                <button onclick="exportToExcel()" class="w-full bg-green-500 text-white font-medium py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2">
+                    <span>📊</span> Excelに出力
+                </button>
+                <button onclick="document.getElementById('import-file').click()" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                    <span>📥</span> Excelから復元
+                </button>
+                <input type="file" id="import-file" accept=".xlsx" class="hidden" onchange="importFromExcel(event)">
+            </div>
+        </div>
+
+        <!-- Detail Screen -->
+        <div id="screen-detail" class="hidden space-y-6">
+            <button onclick="backToList()" class="flex items-center gap-2 text-amber-600 font-medium hover:text-amber-700">
+                <span>←</span> 顧客一覧に戻る
+            </button>
+
+            <!-- Customer Info Edit -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>👤</span> 顧客情報
+                </h2>
+                
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">顧客名</label>
+                        <input type="text" id="detail-name" class="w-full border border-gray-300 rounded-lg px-4 py-3">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">対面者</label>
+                        <div class="flex flex-wrap gap-2" id="detail-contact-group">
+                            <label class="checkbox-label"><input type="checkbox" value="奥" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="夫" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">夫</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おば" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おじ" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="子" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">子</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-contact')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                        </div>
+                        <input type="text" id="detail-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
+                        <input type="text" id="detail-address" class="w-full border border-gray-300 rounded-lg px-4 py-3">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ニーズ</label>
+                        <div class="flex flex-wrap gap-2" id="detail-needs-group">
+                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-needs')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                        </div>
+                        <input type="text" id="detail-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visit History -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>📅</span> 訪問履歴
+                </h2>
+                <div id="visit-history" class="space-y-3">
+                    <!-- Visit records will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Add New Visit -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>➕</span> 新しい訪問記録を追加
+                </h2>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
+                            <div class="flex items-center gap-1">
+                                <button onclick="changeDate('detail-visit-date', -1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">◀</button>
+                                <input type="date" id="detail-visit-date" class="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-center">
+                                <button onclick="changeDate('detail-visit-date', 1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">▶</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
+                            <select id="detail-visit-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ <span class="text-red-500">*</span></label>
+                        <textarea id="detail-visit-memo" rows="4" placeholder="訪問内容を記録（必須）" class="w-full border border-gray-300 rounded-lg px-4 py-3"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <button onclick="saveCustomerDetail()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
+                💾 保存して一覧に戻る
+            </button>
+
+            <!-- Delete Button -->
+            <button onclick="deleteCustomer()" class="w-full bg-red-100 text-red-600 font-medium py-3 rounded-xl hover:bg-red-200 transition-colors">
+                🗑️ この顧客を削除
+            </button>
+        </div>
+    </main>
+
+    <script>
+        // ===== Data Management =====
+        let customers = JSON.parse(localStorage.getItem('customerData') || '[]');
+        let idCounter = parseInt(localStorage.getItem('customerIdCounter') || '1');
+        let lastBackupDate = localStorage.getItem('lastBackupDate');
+        let currentCustomerId = null;
+        let currentKanaFilter = '全て';
+        let isFollowUpFilter = false;
+        let editingVisitIndex = null;
+
+        // ===== Initialize =====
+        document.addEventListener('DOMContentLoaded', () => {
+            initTimeSelects();
+            setTodayDate();
+            checkBackupReminder();
+        });
+
+        function initTimeSelects() {
+            const timeOptions = [];
+            for (let h = 9; h <= 18; h++) {
+                timeOptions.push(`${String(h).padStart(2, '0')}:00`);
+                if (h < 18) timeOptions.push(`${String(h).padStart(2, '0')}:30`);
+            }
+            
+            const selects = ['reg-time', 'detail-visit-time', 'edit-visit-time'];
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.innerHTML = timeOptions.map(t => `<option value="${t}">${t}</option>`).join('');
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    const currentMin = now.getMinutes();
+                    const roundedMin = currentMin < 30 ? '00' : '30';
+                    const currentTime = `${String(currentHour).padStart(2, '0')}:${roundedMin}`;
+                    if (timeOptions.includes(currentTime)) {
+                        select.value = currentTime;
+                    }
+                }
+            });
+        }
+
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reg-date').value = today;
+            document.getElementById('detail-visit-date').value = today;
+        }
+
+        function changeDate(inputId, days) {
+            const input = document.getElementById(inputId);
+            const date = new Date(input.value);
+            date.setDate(date.getDate() + days);
+            input.value = date.toISOString().split('T')[0];
+        }
+
+        // ===== Screen Navigation =====
+        function showScreen(screen) {
+            document.getElementById('screen-register').classList.add('hidden');
+            document.getElementById('screen-list').classList.add('hidden');
+            document.getElementById('screen-detail').classList.add('hidden');
+            
+            document.getElementById('tab-register').classList.remove('tab-active');
+            document.getElementById('tab-register').classList.add('tab-inactive');
+            document.getElementById('tab-list').classList.remove('tab-active');
+            document.getElementById('tab-list').classList.add('tab-inactive');
+
+            if (screen === 'register') {
+                document.getElementById('screen-register').classList.remove('hidden');
+                document.getElementById('tab-register').classList.add('tab-active');
+                document.getElementById('tab-register').classList.remove('tab-inactive');
+            } else if (screen === 'list') {
+                document.getElementById('screen-list').classList.remove('hidden');
+                document.getElementById('tab-list').classList.add('tab-active');
+                document.getElementById('tab-list').classList.remove('tab-inactive');
+                renderCustomerList();
+            } else if (screen === 'detail') {
+                document.getElementById('screen-detail').classList.remove('hidden');
+                document.getElementById('tab-list').classList.add('tab-active');
+                document.getElementById('tab-list').classList.remove('tab-inactive');
+            }
+        }
+
+        function backToList() {
+            showScreen('list');
+        }
+
+        // ===== Customer Registration =====
+        function getCheckedValues(groupId) {
+            const group = document.getElementById(groupId);
+            const checked = Array.from(group.querySelectorAll('input:checked')).map(cb => cb.value);
+            const otherInput = document.getElementById(groupId.replace('-group', '-other'));
+            if (checked.includes('その他') && otherInput && otherInput.value.trim()) {
+                const idx = checked.indexOf('その他');
+                checked[idx] = otherInput.value.trim();
+            } else {
+                const idx = checked.indexOf('その他');
+                if (idx > -1) checked.splice(idx, 1);
+            }
+            return checked;
+        }
+
+        function toggleOtherInput(prefix) {
+            const checkbox = document.querySelector(`#${prefix}-group input[value="その他"]`);
+            const otherInput = document.getElementById(`${prefix}-other`);
+            if (checkbox.checked) {
+                otherInput.classList.remove('hidden');
+            } else {
+                otherInput.classList.add('hidden');
+                otherInput.value = '';
+            }
+        }
+
+        function registerCustomer() {
+            const name = document.getElementById('reg-name').value.trim();
+            const contact = getCheckedValues('reg-contact-group');
+            const address = document.getElementById('reg-address').value.trim();
+            const needs = getCheckedValues('reg-needs-group');
+            const memo = document.getElementById('reg-memo').value.trim();
+            const date = document.getElementById('reg-date').value;
+            const time = document.getElementById('reg-time').value;
+
+            const customer = {
+                id: idCounter++,
+                name: name,
+                contact: contact.join(', '),
+                address: address,
+                needs: needs.join(', '),
+                visitHistory: [{
+                    date: `${date} ${time}`,
+                    memo: memo
+                }]
+            };
+
+            customers.push(customer);
+            saveData();
+            showToast('登録しました');
+            clearRegisterForm();
+        }
+
+        function clearRegisterForm() {
+            document.getElementById('reg-name').value = '';
+            document.getElementById('reg-address').value = '';
+            document.getElementById('reg-memo').value = '';
+            document.querySelectorAll('#reg-contact-group input, #reg-needs-group input').forEach(cb => cb.checked = false);
+            document.querySelectorAll('#reg-contact-group .checkbox-label span, #reg-needs-group .checkbox-label span').forEach(span => {
+                span.style.backgroundColor = '';
+                span.style.color = '';
+                span.style.borderColor = '';
+            });
+            document.getElementById('reg-contact-other').classList.add('hidden');
+            document.getElementById('reg-contact-other').value = '';
+            document.getElementById('reg-needs-other').classList.add('hidden');
+            document.getElementById('reg-needs-other').value = '';
+            setTodayDate();
+            initTimeSelects();
+        }
+
+        // ===== Customer List =====
+        function renderCustomerList() {
+            const container = document.getElementById('customer-cards');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            
+            let filtered = customers.filter(c => {
+                // Search filter
+                const searchMatch = !searchTerm || 
+                    (c.name && c.name.toLowerCase().includes(searchTerm)) ||
+                    (c.address && c.address.toLowerCase().includes(searchTerm)) ||
+                    c.visitHistory.some(v => v.memo && v.memo.toLowerCase().includes(searchTerm));
+                
+                // Kana filter
+                let kanaMatch = true;
+                if (currentKanaFilter !== '全て') {
+                    kanaMatch = matchesKanaFilter(c.name, currentKanaFilter);
+                }
+                
+                // Follow-up filter
+                let followUpMatch = true;
+                if (isFollowUpFilter) {
+                    const days = getDaysSinceLastVisit(c);
+                    followUpMatch = days >= 15;
+                }
+                
+                return searchMatch && kanaMatch && followUpMatch;
+            });
+
+            document.getElementById('customer-count').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">顧客が見つかりません</div>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const days = getDaysSinceLastVisit(c);
+                let badgeClass = 'visit-badge-normal';
+                let badgeIcon = '';
+                if (days >= 15) {
+                    badgeClass = 'visit-badge-danger';
+                    badgeIcon = '🔴 ';
+                } else if (days >= 8) {
+                    badgeClass = 'visit-badge-warning';
+                    badgeIcon = '⚠️ ';
+                }
+                
+                return `
+                    <div class="customer-card bg-white rounded-xl shadow-md p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-gray-800">${c.name || '(未入力)'}</h3>
+                            <span class="text-xs px-2 py-1 rounded-full text-white ${badgeClass}">${badgeIcon}${days}日前</span>
+                        </div>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            ${c.contact ? `<p><span class="text-gray-400">対面者:</span> ${c.contact}</p>` : ''}
+                            ${c.address ? `<p><span class="text-gray-400">住所:</span> ${c.address}</p>` : ''}
+                            ${c.needs ? `<p><span class="text-gray-400">ニーズ:</span> ${c.needs}</p>` : ''}
+                        </div>
+                        <button onclick="showCustomerDetail(${c.id})" class="mt-3 w-full bg-amber-100 text-amber-700 font-medium py-2 rounded-lg hover:bg-amber-200 transition-colors">
+                            情報確認・訪問記録を追加
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getDaysSinceLastVisit(customer) {
+            if (!customer.visitHistory || customer.visitHistory.length === 0) return 999;
+            const lastVisit = customer.visitHistory.reduce((latest, v) => {
+                const d = new Date(v.date);
+                return d > latest ? d : latest;
+            }, new Date(0));
+            const now = new Date();
+            const diff = Math.floor((now - lastVisit) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+
+        function matchesKanaFilter(name, filter) {
+            if (!name) return filter === 'その他';
+            const firstChar = name.charAt(0);
+            
+            const kanaMap = {
+                'ア': /^[あいうえおアイウエオ亜-鑌]/,
+                'カ': /^[かきくけこがぎぐげごカキクケコガギグゲゴ]/,
+                'サ': /^[さしすせそざじずぜぞサシスセソザジズゼゾ]/,
+                'タ': /^[たちつてとだぢづでどタチツテトダヂヅデド]/,
+                'ナ': /^[なにぬねのナニヌネノ]/,
+                'ハ': /^[はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポ]/,
+                'マ': /^[まみむめもマミムメモ]/,
+                'ヤ': /^[やゆよヤユヨ]/,
+                'ラ': /^[らりるれろラリルレロ]/,
+                'ワ': /^[わをんワヲン]/,
+            };
+
+            if (filter === 'その他') {
+                for (const regex of Object.values(kanaMap)) {
+                    if (regex.test(firstChar)) return false;
+                }
+                return true;
+            }
+
+            return kanaMap[filter] ? kanaMap[filter].test(firstChar) : false;
+        }
+
+        function setKanaFilter(kana) {
+            currentKanaFilter = kana;
+            isFollowUpFilter = false;
+            
+            document.querySelectorAll('#kana-filter button').forEach(btn => {
+                if (btn.dataset.kana === kana) {
+                    btn.classList.remove('bg-gray-100', 'text-gray-700');
+                    btn.classList.add('bg-amber-500', 'text-white');
+                } else {
+                    btn.classList.remove('bg-amber-500', 'text-white');
+                    btn.classList.add('bg-gray-100', 'text-gray-700');
+                }
+            });
+            
+            document.getElementById('followup-btn').classList.remove('bg-red-500', 'text-white');
+            document.getElementById('followup-btn').classList.add('bg-red-100', 'text-red-700');
+            
+            renderCustomerList();
+        }
+
+        function setFollowUpFilter() {
+            isFollowUpFilter = !isFollowUpFilter;
+            
+            const btn = document.getElementById('followup-btn');
+            if (isFollowUpFilter) {
+                btn.classList.remove('bg-red-100', 'text-red-700');
+                btn.classList.add('bg-red-500', 'text-white');
+            } else {
+                btn.classList.remove('bg-red-500', 'text-white');
+                btn.classList.add('bg-red-100', 'text-red-700');
+            }
+            
+            renderCustomerList();
+        }
+
+        function filterCustomers() {
+            renderCustomerList();
+        }
+
+        // ===== Customer Detail =====
+        function showCustomerDetail(id) {
+            currentCustomerId = id;
+            const customer = customers.find(c => c.id === id);
+            if (!customer) return;
+
+            document.getElementById('detail-name').value = customer.name || '';
+            document.getElementById('detail-address').value = customer.address || '';
+            
+            // Set contact checkboxes
+            setCheckboxValues('detail-contact-group', customer.contact);
+            
+            // Set needs checkboxes
+            setCheckboxValues('detail-needs-group', customer.needs);
+            
+            // Render visit history
+            renderVisitHistory(customer);
+            
+            // Reset new visit form
+            setTodayDate();
+            initTimeSelects();
+            document.getElementById('detail-visit-memo').value = '';
+            
+            showScreen('detail');
+        }
+
+        function setCheckboxValues(groupId, valueString) {
+            const group = document.getElementById(groupId);
+            const values = valueString ? valueString.split(', ').map(v => v.trim()) : [];
+            const standardValues = ['奥', '夫', 'おば', 'おじ', '子', '便秘', '下痢', '睡眠', 'ストレス', 'アレルギー'];
+            
+            group.querySelectorAll('input').forEach(cb => {
+                cb.checked = values.includes(cb.value);
+            });
+            
+            // Check for custom "other" values
+            const otherValues = values.filter(v => !standardValues.includes(v) && v !== 'その他');
+            const otherInput = document.getElementById(groupId.replace('-group', '-other'));
+            const otherCheckbox = group.querySelector('input[value="その他"]');
+            
+            if (otherValues.length > 0) {
+                otherCheckbox.checked = true;
+                otherInput.classList.remove('hidden');
+                otherInput.value = otherValues.join(', ');
+            } else {
+                otherCheckbox.checked = false;
+                otherInput.classList.add('hidden');
+                otherInput.value = '';
+            }
+            
+            // Update visual state
+            group.querySelectorAll('.checkbox-label').forEach(label => {
+                const input = label.querySelector('input');
+                const span = label.querySelector('span');
+                if (input.checked) {
+                    span.style.backgroundColor = '#F59E0B';
+                    span.style.color = 'white';
+                    span.style.borderColor = '#F59E0B';
+                } else {
+                    span.style.backgroundColor = '';
+                    span.style.color = '';
+                    span.style.borderColor = '';
+                }
+            });
+        }
+
+        function renderVisitHistory(customer) {
+            const container = document.getElementById('visit-history');
+            
+            if (!customer.visitHistory || customer.visitHistory.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">訪問履歴がありません</p>';
+                return;
+            }
+
+            const sortedHistory = [...customer.visitHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            container.innerHTML = sortedHistory.map((visit, idx) => {
+                const originalIdx = customer.visitHistory.indexOf(visit);
+                return `
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-medium text-gray-800">${formatDateTime(visit.date)}</span>
+                            <div class="flex gap-2">
+                                <button onclick="editVisit(${originalIdx})" class="text-blue-500 text-sm hover:underline">編集</button>
+                                <button onclick="deleteVisit(${originalIdx})" class="text-red-500 text-sm hover:underline">削除</button>
+                            </div>
+                        </div>
+                        <p class="text-gray-600 text-sm whitespace-pre-wrap">${visit.memo || '(メモなし)'}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${y}/${m}/${d} ${h}:${min}`;
+        }
+
+        function editVisit(idx) {
+            const customer = customers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
+            
+            const visit = customer.visitHistory[idx];
+            editingVisitIndex = idx;
+            
+            const date = new Date(visit.date);
+            document.getElementById('edit-visit-date').value = date.toISOString().split('T')[0];
+            
+            const hours = String(date.getHours()).padStart(2, '0');
+            const mins = date.getMinutes() < 30 ? '00' : '30';
+            document.getElementById('edit-visit-time').value = `${hours}:${mins}`;
+            
+            document.getElementById('edit-visit-memo').value = visit.memo || '';
+            
+            document.getElementById('edit-visit-modal').classList.remove('hidden');
+        }
+
+        function closeEditVisitModal() {
+            document.getElementById('edit-visit-modal').classList.add('hidden');
+            editingVisitIndex = null;
+        }
+
+        function saveEditedVisit() {
+            if (editingVisitIndex === null) return;
+            
+            const customer = customers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
+            
+            const date = document.getElementById('edit-visit-date').value;
+            const time = document.getElementById('edit-visit-time').value;
+            const memo = document.getElementById('edit-visit-memo').value.trim();
+            
+            customer.visitHistory[editingVisitIndex] = {
+                date: `${date} ${time}`,
+                memo: memo
+            };
+            
+            saveData();
+            renderVisitHistory(customer);
+            closeEditVisitModal();
+            showToast('訪問記録を更新しました');
+        }
+
+        function deleteVisit(idx) {
+            if (!confirm('この訪問記録を削除しますか？')) return;
+            
+            const customer = customers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
+            
+            customer.visitHistory.splice(idx, 1);
+            saveData();
+            renderVisitHistory(customer);
+            showToast('訪問記録を削除しました');
+        }
+
+        function saveCustomerDetail() {
+            const customer = customers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
+            
+            customer.name = document.getElementById('detail-name').value.trim();
+            customer.contact = getCheckedValues('detail-contact-group').join(', ');
+            customer.address = document.getElementById('detail-address').value.trim();
+            customer.needs = getCheckedValues('detail-needs-group').join(', ');
+            
+            // Add new visit if memo is filled
+            const memo = document.getElementById('detail-visit-memo').value.trim();
+            if (memo) {
+                const date = document.getElementById('detail-visit-date').value;
+                const time = document.getElementById('detail-visit-time').value;
+                customer.visitHistory.push({
+                    date: `${date} ${time}`,
+                    memo: memo
+                });
+            }
+            
+            saveData();
+            showToast('保存しました');
+            showScreen('list');
+        }
+
+        function deleteCustomer() {
+            if (!confirm('この顧客を削除しますか？削除すると復元できません。')) return;
+            if (!confirm('本当に削除しますか？')) return;
+            
+            customers = customers.filter(c => c.id !== currentCustomerId);
+            saveData();
+            showToast('顧客を削除しました');
+            showScreen('list');
+        }
+
+        // ===== Data Storage =====
+        function saveData() {
+            localStorage.setItem('customerData', JSON.stringify(customers));
+            localStorage.setItem('customerIdCounter', idCounter.toString());
+        }
+
+        // ===== Excel Export/Import =====
+        function exportToExcel() {
+            const data = customers.map(c => {
+                const lastVisit = c.visitHistory && c.visitHistory.length > 0 
+                    ? c.visitHistory.reduce((latest, v) => {
+                        const d = new Date(v.date);
+                        return d > new Date(latest.date) ? v : latest;
+                    })
+                    : null;
+                
+                return {
+                    'ID': c.id,
+                    '顧客名': c.name || '',
+                    '対面者': c.contact || '',
+                    '住所': c.address || '',
+                    'ニーズ': c.needs || '',
+                    '最終訪問日時': lastVisit ? lastVisit.date : '',
+                    '最新メモ': lastVisit ? lastVisit.memo : '',
+                    '訪問履歴JSON': JSON.stringify(c.visitHistory || [])
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '顧客リスト');
+            
+            const today = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `顧客リスト_${today}.xlsx`);
+            
+            localStorage.setItem('lastBackupDate', new Date().toISOString());
+            showToast('Excelファイルを保存しました');
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!confirm('⚠️ 現在のデータは全て削除されます。続けますか？')) {
+                event.target.value = '';
+                return;
+            }
+            if (!confirm('⚠️ 全てのデータが削除され置き換えられます。本当に続けますか？')) {
+                event.target.value = '';
+                return;
+            }
+            if (!confirm('最終確認：データを復元しますか？')) {
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(sheet);
+                    
+                    customers = json.map(row => ({
+                        id: row['ID'] || idCounter++,
+                        name: row['顧客名'] || '',
+                        contact: row['対面者'] || '',
+                        address: row['住所'] || '',
+                        needs: row['ニーズ'] || '',
+                        visitHistory: row['訪問履歴JSON'] ? JSON.parse(row['訪問履歴JSON']) : []
+                    }));
+                    
+                    // Update ID counter
+                    const maxId = Math.max(...customers.map(c => c.id), 0);
+                    idCounter = maxId + 1;
+                    
+                    saveData();
+                    showToast(`データを復元しました！${customers.length}件の顧客データ`);
+                    renderCustomerList();
+                } catch (err) {
+                    alert('ファイルの読み込みに失敗しました。正しいExcelファイルか確認してください。');
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        // ===== Backup Reminder =====
+        function checkBackupReminder() {
+            if (!lastBackupDate) return;
+            
+            const lastBackup = new Date(lastBackupDate);
+            const now = new Date();
+            const daysSinceBackup = Math.floor((now - lastBackup) / (1000 * 60 * 60 * 24));
+            
+            const dismissedUntil = localStorage.getItem('backupDismissedUntil');
+            if (dismissedUntil && new Date(dismissedUntil) > now) return;
+            
+            if (daysSinceBackup >= 7) {
+                document.getElementById('backup-message').textContent = 
+                    `最後のバックアップから${daysSinceBackup}日経過しています`;
+                document.getElementById('backup-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeBackupModal() {
+            document.getElementById('backup-modal').classList.add('hidden');
+        }
+
+        function dismissBackupReminder() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            localStorage.setItem('backupDismissedUntil', tomorrow.toISOString());
+            closeBackupModal();
+        }
+
+        // ===== Toast =====
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // ===== Service Worker Registration =====
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed'));
+        }
+    </script>
+</body>
+</html>
