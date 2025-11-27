@@ -1,7 +1,7 @@
-const CACHE_NAME = 'himawari-v1';
+const CACHE_NAME = 'himawari-v2';
 const urlsToCache = [
-    '/',
-    '/index.html',
+    './',
+    './index.html',
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
 ];
@@ -48,7 +48,7 @@ self.addEventListener('fetch', event => {
                 });
             })
             .catch(() => {
-                return caches.match('/index.html');
+                return caches.match('./index.html');
             })
     );
 });
