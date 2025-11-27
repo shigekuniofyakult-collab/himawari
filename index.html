@@ -971,9 +971,14 @@
             }, 3000);
         }
 
-        // ===== Service Worker Registration =====
+        // ===== Service Worker Registration (disabled for debugging) =====
+        // Service Workerを無効化し、既存のものも削除
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(err => console.log('SW registration failed'));
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                registrations.forEach(registration => {
+                    registration.unregister();
+                });
+            });
         }
     </script>
 </body>
