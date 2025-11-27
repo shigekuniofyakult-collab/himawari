@@ -31,7 +31,8 @@
         .btn-disabled { opacity: 0.5; pointer-events: none; }
         .icon-btn { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
         .date-nav-btn { min-width: 44px; min-height: 44px; }
-        .search-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+        .search-clear { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+        .choice-btn { min-width: 52px; padding: 8px 4px; text-align: center; }
     </style>
 </head>
 <body class="bg-amber-50 min-h-screen">
@@ -43,8 +44,8 @@
         </div>
     </div>
 
-    <!-- Undo Toast -->
-    <div id="undo-toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 hidden">
+    <!-- Undo Toast - 上部に移動 -->
+    <div id="undo-toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 hidden">
         <div class="bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-4">
             <span id="undo-message">削除しました</span>
             <button onclick="undoDelete()" class="bg-amber-500 text-white px-3 py-1 rounded font-medium">元に戻す</button>
@@ -89,27 +90,27 @@
 
     <!-- Edit Visit Modal -->
     <div id="edit-visit-modal" class="fixed inset-0 z-40 hidden">
-        <div class="modal-overlay absolute inset-0" onclick="closeEditVisitModal()"></div>
+        <div class="modal-overlay absolute inset-0" onclick="handleEditVisitBackgroundClick()"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10">
                 <h3 class="text-lg font-bold text-gray-800 mb-4">訪問記録を編集</h3>
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
-                        <input type="date" id="edit-visit-date" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <input type="date" id="edit-visit-date" class="w-full border border-gray-300 rounded-lg px-3 py-2" oninput="markEditVisitDirty()">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
-                        <select id="edit-visit-time" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+                        <select id="edit-visit-time" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="markEditVisitDirty()"></select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
-                        <textarea id="edit-visit-memo" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2"></textarea>
+                        <textarea id="edit-visit-memo" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2" oninput="markEditVisitDirty()"></textarea>
                     </div>
                 </div>
                 <div class="flex gap-3 mt-6">
-                    <button onclick="closeEditVisitModal()" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
-                    <button onclick="saveEditedVisit()" class="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium">保存</button>
+                    <button onclick="handleEditVisitCancel()" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
+                    <button onclick="saveEditedVisit()" class="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium">保存する</button>
                 </div>
             </div>
         </div>
@@ -162,12 +163,12 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">対面者 <span class="text-gray-400 text-xs">（任意・複数選択可）</span></label>
                         <div class="flex flex-wrap gap-2" id="reg-contact-group">
-                            <label class="checkbox-label"><input type="checkbox" value="奥様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="旦那様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">旦那様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おば様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おじ様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="お子様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">お子様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-contact'); markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="奥" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">奥</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="旦那" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">旦那</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おば" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">おば</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おじ" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">おじ</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="子" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">子</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-contact'); markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
                         <input type="text" id="reg-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markFormDirty()">
                     </div>
@@ -182,12 +183,12 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">ニーズ <span class="text-gray-400 text-xs">（任意・複数選択可）</span></label>
                         <div class="flex flex-wrap gap-2" id="reg-needs-group">
-                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-needs'); markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">便秘</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">下痢</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">睡眠</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">ストレス</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden" onchange="markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-needs'); markFormDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
                         <input type="text" id="reg-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markFormDirty()">
                     </div>
@@ -228,8 +229,8 @@
             <div class="bg-white rounded-xl shadow-md p-4">
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
-                    <input type="text" id="search-input" placeholder="名前、住所、訪問メモで検索..." oninput="filterCustomers()" class="w-full border border-gray-300 rounded-lg pl-10 pr-10 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
-                    <button onclick="clearSearch()" id="search-clear-btn" class="search-clear text-gray-400 hover:text-gray-600 hidden p-1">✕</button>
+                    <input type="text" id="search-input" placeholder="名前、住所、訪問メモで検索..." oninput="filterCustomers()" class="w-full border border-gray-300 rounded-lg pl-10 pr-12 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                    <button onclick="clearSearch()" id="search-clear-btn" class="search-clear text-gray-400 hover:text-gray-600 hidden rounded-lg hover:bg-gray-100">✕</button>
                 </div>
             </div>
 
@@ -237,7 +238,7 @@
             <div class="bg-white rounded-xl shadow-md p-4">
                 <div class="flex justify-center">
                     <button onclick="toggleFollowUpFilter()" id="followup-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
-                        🔴 要フォロー (15日以上)
+                        🔴 15日以上未訪問
                     </button>
                 </div>
             </div>
@@ -290,12 +291,12 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">対面者</label>
                         <div class="flex flex-wrap gap-2" id="detail-contact-group">
-                            <label class="checkbox-label"><input type="checkbox" value="奥様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="旦那様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">旦那様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おば様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おじ様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="お子様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">お子様</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-contact'); markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="奥" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">奥</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="旦那" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">旦那</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おば" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">おば</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おじ" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">おじ</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="子" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">子</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-contact'); markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
                         <input type="text" id="detail-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markDetailDirty()">
                     </div>
@@ -308,15 +309,20 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">ニーズ</label>
                         <div class="flex flex-wrap gap-2" id="detail-needs-group">
-                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-needs'); markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">便秘</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">下痢</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">睡眠</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">ストレス</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden" onchange="markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-needs'); markDetailDirty()"><span class="choice-btn inline-block border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
                         <input type="text" id="detail-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markDetailDirty()">
                     </div>
+
+                    <!-- 顧客情報保存ボタン -->
+                    <button onclick="saveCustomerInfo()" id="save-customer-btn" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                        💾 顧客情報を保存
+                    </button>
                 </div>
             </div>
 
@@ -352,17 +358,18 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
-                        <textarea id="detail-visit-memo" rows="4" placeholder="訪問内容を記録" class="w-full border border-gray-300 rounded-lg px-4 py-3" oninput="markDetailDirty()"></textarea>
+                        <textarea id="detail-visit-memo" rows="4" placeholder="訪問内容を記録" class="w-full border border-gray-300 rounded-lg px-4 py-3"></textarea>
                     </div>
-                    <button onclick="addVisitRecord()" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                    <button onclick="addVisitRecord()" id="add-visit-btn" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg hover:bg-blue-600 transition-colors">
                         📝 この訪問記録を追加
                     </button>
+                    <p class="text-xs text-gray-500 text-center">※訪問記録は即座に保存されます</p>
                 </div>
             </div>
 
-            <!-- Save Button -->
-            <button onclick="saveCustomerDetail()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
-                💾 顧客情報を保存して戻る
+            <!-- Back to List Button -->
+            <button onclick="handleBackToList()" class="w-full bg-gray-100 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-200 transition-colors">
+                ← 顧客一覧に戻る
             </button>
 
             <!-- Delete Button -->
@@ -382,11 +389,13 @@
         let editingVisitIndex = null;
         let isFormDirty = false;
         let isDetailDirty = false;
+        let isEditVisitDirty = false;
         let deletedCustomer = null;
         let deletedVisit = null;
         let undoTimeout = null;
         let confirmCallback = null;
         let isProcessing = false;
+        let originalEditVisitData = null;
 
         // ===== Utility: HTML Escape =====
         function escapeHtml(text) {
@@ -452,6 +461,10 @@
             isDetailDirty = true;
         }
 
+        function markEditVisitDirty() {
+            isEditVisitDirty = true;
+        }
+
         function resetFormDirty() {
             isFormDirty = false;
         }
@@ -460,11 +473,16 @@
             isDetailDirty = false;
         }
 
+        function resetEditVisitDirty() {
+            isEditVisitDirty = false;
+        }
+
         // ===== Confirm Modal =====
-        function showConfirm(title, message, callback, icon = '⚠️', okBtnClass = 'bg-amber-500') {
+        function showConfirm(title, message, callback, icon = '⚠️', okBtnText = 'OK', okBtnClass = 'bg-amber-500') {
             document.getElementById('confirm-title').textContent = title;
             document.getElementById('confirm-message').textContent = message;
             document.getElementById('confirm-icon').textContent = icon;
+            document.getElementById('confirm-ok-btn').textContent = okBtnText;
             document.getElementById('confirm-ok-btn').className = `flex-1 py-2 px-4 ${okBtnClass} text-white rounded-lg font-medium`;
             confirmCallback = callback;
             document.getElementById('confirm-modal').classList.remove('hidden');
@@ -515,7 +533,7 @@
                         clearRegisterForm();
                         showScreen(screen);
                     }
-                });
+                }, '⚠️', '破棄する', 'bg-red-500');
                 return;
             }
             
@@ -525,7 +543,7 @@
                         resetDetailDirty();
                         showScreen(screen);
                     }
-                });
+                }, '⚠️', '破棄する', 'bg-red-500');
                 return;
             }
             
@@ -546,7 +564,7 @@
                         resetDetailDirty();
                         showScreen('list');
                     }
-                });
+                }, '⚠️', '破棄する', 'bg-red-500');
                 return;
             }
             showScreen('list');
@@ -595,7 +613,7 @@
                     if (result) {
                         doRegister(name, contact, address, needs, memo, date, time);
                     }
-                });
+                }, '⚠️', '登録する', 'bg-amber-500');
                 return;
             }
 
@@ -720,7 +738,7 @@
                 }
                 
                 const latestMemo = getLatestMemo(c);
-                const memoPreview = latestMemo ? escapeHtml(latestMemo.substring(0, 25)) + (latestMemo.length > 25 ? '...' : '') : '';
+                const memoPreview = latestMemo ? '📝 ' + escapeHtml(latestMemo.substring(0, 25)) + (latestMemo.length > 25 ? '...' : '') : '';
                 
                 return `
                     <div class="customer-card bg-white rounded-xl shadow-md p-4">
@@ -732,7 +750,7 @@
                             ${c.contact ? `<p><span class="text-gray-400">対面者:</span> ${escapeHtml(c.contact)}</p>` : ''}
                             ${c.address ? `<p><span class="text-gray-400">住所:</span> ${escapeHtml(c.address)}</p>` : ''}
                             ${c.needs ? `<p><span class="text-gray-400">ニーズ:</span> ${escapeHtml(c.needs)}</p>` : ''}
-                            ${memoPreview ? `<p class="text-gray-400 italic">${memoPreview}</p>` : ''}
+                            ${memoPreview ? `<p class="text-gray-500">${memoPreview}</p>` : ''}
                         </div>
                         <button onclick="showCustomerDetail(${c.id})" class="mt-3 w-full bg-amber-100 text-amber-700 font-medium py-2 rounded-lg hover:bg-amber-200 transition-colors">
                             詳細を見る
@@ -800,15 +818,7 @@
             setCheckboxValues('detail-needs-group', customer.needs);
             
             // Update last visit info
-            const days = getDaysSinceLastVisit(customer);
-            const lastVisitText = document.getElementById('detail-last-visit-text');
-            if (days === -1) {
-                lastVisitText.textContent = '最終訪問: 記録なし';
-            } else if (days === 0) {
-                lastVisitText.textContent = '最終訪問: 今日';
-            } else {
-                lastVisitText.textContent = `最終訪問: ${days}日前`;
-            }
+            updateLastVisitInfo(customer);
             
             // Render visit history
             renderVisitHistory(customer);
@@ -825,7 +835,7 @@
         function setCheckboxValues(groupId, valueString) {
             const group = document.getElementById(groupId);
             const values = valueString ? valueString.split(', ').map(v => v.trim()) : [];
-            const standardValues = ['奥様', '旦那様', 'おば様', 'おじ様', 'お子様', '便秘', '下痢', '睡眠', 'ストレス', 'アレルギー'];
+            const standardValues = ['奥', '旦那', 'おば', 'おじ', '子', '便秘', '下痢', '睡眠', 'ストレス', 'アレルギー'];
             
             group.querySelectorAll('input').forEach(cb => {
                 cb.checked = values.includes(cb.value);
@@ -879,11 +889,11 @@
                         <div class="flex justify-between items-start mb-2">
                             <span class="font-medium text-gray-800">${formatDateTime(visit.date)}</span>
                             <div class="flex gap-1">
-                                <button onclick="editVisit(${originalIdx})" class="icon-btn text-blue-500 hover:bg-blue-50 rounded-lg" title="編集">
-                                    ✏️
+                                <button onclick="editVisit(${originalIdx})" class="icon-btn text-blue-500 hover:bg-blue-50 rounded-lg text-sm" title="編集">
+                                    ✏️編集
                                 </button>
-                                <button onclick="confirmDeleteVisit(${originalIdx})" class="icon-btn text-red-500 hover:bg-red-50 rounded-lg" title="削除">
-                                    🗑️
+                                <button onclick="confirmDeleteVisit(${originalIdx})" class="icon-btn text-red-500 hover:bg-red-50 rounded-lg text-sm" title="削除">
+                                    🗑️削除
                                 </button>
                             </div>
                         </div>
@@ -929,12 +939,46 @@
             
             document.getElementById('edit-visit-memo').value = visit.memo || '';
             
+            // Store original data for comparison
+            originalEditVisitData = {
+                date: document.getElementById('edit-visit-date').value,
+                time: timeSelect.value,
+                memo: visit.memo || ''
+            };
+            
+            resetEditVisitDirty();
             document.getElementById('edit-visit-modal').classList.remove('hidden');
+        }
+
+        function handleEditVisitBackgroundClick() {
+            if (isEditVisitDirty) {
+                showConfirm('確認', '編集内容が保存されていません。破棄しますか？', (result) => {
+                    if (result) {
+                        closeEditVisitModal();
+                    }
+                }, '⚠️', '破棄する', 'bg-red-500');
+            } else {
+                closeEditVisitModal();
+            }
+        }
+
+        function handleEditVisitCancel() {
+            if (isEditVisitDirty) {
+                showConfirm('確認', '編集内容が保存されていません。破棄しますか？', (result) => {
+                    if (result) {
+                        closeEditVisitModal();
+                    }
+                }, '⚠️', '破棄する', 'bg-red-500');
+            } else {
+                closeEditVisitModal();
+            }
         }
 
         function closeEditVisitModal() {
             document.getElementById('edit-visit-modal').classList.add('hidden');
             editingVisitIndex = null;
+            originalEditVisitData = null;
+            resetEditVisitDirty();
         }
 
         function saveEditedVisit() {
@@ -964,7 +1008,7 @@
                 if (result) {
                     deleteVisit(idx);
                 }
-            }, '🗑️', 'bg-red-500');
+            }, '🗑️', '削除する', 'bg-red-500');
         }
 
         function deleteVisit(idx) {
@@ -998,8 +1042,15 @@
         }
 
         function addVisitRecord() {
+            if (isProcessing) return;
+            
             const customer = customers.find(c => c.id === currentCustomerId);
             if (!customer) return;
+            
+            isProcessing = true;
+            const btn = document.getElementById('add-visit-btn');
+            btn.classList.add('btn-disabled');
+            btn.textContent = '追加中...';
             
             const memo = document.getElementById('detail-visit-memo').value.trim();
             const date = document.getElementById('detail-visit-date').value;
@@ -1011,15 +1062,21 @@
             });
             
             saveData();
-            renderVisitHistory(customer);
-            updateLastVisitInfo(customer);
-            document.getElementById('detail-visit-memo').value = '';
-            setTodayDate();
-            initTimeSelects();
-            showToast('訪問記録を追加しました', '✅');
+            
+            setTimeout(() => {
+                renderVisitHistory(customer);
+                updateLastVisitInfo(customer);
+                document.getElementById('detail-visit-memo').value = '';
+                setTodayDate();
+                initTimeSelects();
+                showToast('訪問記録を追加しました', '✅');
+                btn.classList.remove('btn-disabled');
+                btn.textContent = '📝 この訪問記録を追加';
+                isProcessing = false;
+            }, 300);
         }
 
-        function saveCustomerDetail() {
+        function saveCustomerInfo() {
             const customer = customers.find(c => c.id === currentCustomerId);
             if (!customer) return;
             
@@ -1030,8 +1087,7 @@
             
             saveData();
             resetDetailDirty();
-            showToast('保存しました', '✅');
-            showScreen('list');
+            showToast('顧客情報を保存しました', '✅');
         }
 
         function deleteCustomer() {
@@ -1046,10 +1102,17 @@
                     customers = customers.filter(c => c.id !== currentCustomerId);
                     saveData();
                     resetDetailDirty();
+                    
+                    // Reset filter to show restored customer
+                    isFollowUpFilter = false;
+                    const btn = document.getElementById('followup-btn');
+                    btn.classList.remove('bg-red-500', 'text-white');
+                    btn.classList.add('bg-red-100', 'text-red-700');
+                    
                     showScreen('list');
                     showUndoToast('顧客を削除しました');
                 }
-            }, '🗑️', 'bg-red-500');
+            }, '🗑️', '削除する', 'bg-red-500');
         }
 
         // ===== Undo Feature =====
@@ -1072,6 +1135,13 @@
             if (deletedCustomer) {
                 customers.push(deletedCustomer);
                 saveData();
+                
+                // Reset filter to show restored customer
+                isFollowUpFilter = false;
+                const btn = document.getElementById('followup-btn');
+                btn.classList.remove('bg-red-500', 'text-white');
+                btn.classList.add('bg-red-100', 'text-red-700');
+                
                 renderCustomerList();
                 showToast('元に戻しました', '↩️');
                 deletedCustomer = null;
@@ -1096,6 +1166,18 @@
 
         // ===== Excel Export/Import =====
         function exportToExcel() {
+            if (customers.length === 0) {
+                showConfirm('確認', '顧客データがありません。空のファイルを出力しますか？', (result) => {
+                    if (result) {
+                        doExportToExcel();
+                    }
+                }, '⚠️', '出力する', 'bg-amber-500');
+                return;
+            }
+            doExportToExcel();
+        }
+
+        function doExportToExcel() {
             const data = customers.map(c => {
                 const lastVisit = c.visitHistory && c.visitHistory.length > 0 
                     ? c.visitHistory.reduce((latest, v) => {
@@ -1138,6 +1220,7 @@
                     }
                 },
                 '⚠️',
+                '復元する',
                 'bg-red-500'
             );
         }
