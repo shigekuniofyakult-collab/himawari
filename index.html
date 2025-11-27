@@ -20,24 +20,34 @@
         .customer-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .checkbox-label { cursor: pointer; user-select: none; }
         .checkbox-label input:checked + span { background-color: #F59E0B; color: white; border-color: #F59E0B; }
-        .toast { animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s; }
+        .toast { animation: slideIn 0.3s ease; }
         @keyframes slideIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
         .modal-overlay { background-color: rgba(0,0,0,0.5); }
         input[type="date"], input[type="time"], select { min-height: 44px; }
         .visit-badge-normal { background-color: #9CA3AF; }
         .visit-badge-warning { background-color: #F97316; }
         .visit-badge-danger { background-color: #EF4444; }
-        .kana-btn { min-width: 40px; }
-        @media (max-width: 640px) { .kana-btn { min-width: 32px; font-size: 0.875rem; } }
+        .visit-badge-none { background-color: #6B7280; }
+        .btn-disabled { opacity: 0.5; pointer-events: none; }
+        .icon-btn { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+        .date-nav-btn { min-width: 44px; min-height: 44px; }
+        .search-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
     </style>
 </head>
 <body class="bg-amber-50 min-h-screen">
     <!-- Toast Notification -->
-    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden">
+    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden cursor-pointer" onclick="hideToast()">
         <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 toast">
-            <span>✅</span>
+            <span id="toast-icon">✅</span>
             <span id="toast-message">登録しました</span>
+        </div>
+    </div>
+
+    <!-- Undo Toast -->
+    <div id="undo-toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-50 hidden">
+        <div class="bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-4">
+            <span id="undo-message">削除しました</span>
+            <button onclick="undoDelete()" class="bg-amber-500 text-white px-3 py-1 rounded font-medium">元に戻す</button>
         </div>
     </div>
 
@@ -53,6 +63,24 @@
                     <div class="flex gap-3">
                         <button onclick="dismissBackupReminder()" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium">後で</button>
                         <button onclick="exportToExcel(); closeBackupModal();" class="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium">今すぐ保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative z-10">
+                <div class="text-center">
+                    <div class="text-4xl mb-3" id="confirm-icon">⚠️</div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-2" id="confirm-title">確認</h3>
+                    <p id="confirm-message" class="text-gray-600 mb-4"></p>
+                    <div class="flex gap-3">
+                        <button onclick="closeConfirmModal(false)" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
+                        <button onclick="closeConfirmModal(true)" id="confirm-ok-btn" class="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium">OK</button>
                     </div>
                 </div>
             </div>
@@ -104,10 +132,10 @@
     <nav class="bg-white shadow-sm sticky top-[68px] z-20">
         <div class="max-w-2xl mx-auto px-4">
             <div class="flex">
-                <button onclick="showScreen('register')" id="tab-register" class="flex-1 py-3 text-center font-medium text-sm tab-active rounded-t-lg">
+                <button onclick="handleTabClick('register')" id="tab-register" class="flex-1 py-3 text-center font-medium text-sm tab-active rounded-t-lg">
                     新規顧客登録
                 </button>
-                <button onclick="showScreen('list')" id="tab-list" class="flex-1 py-3 text-center font-medium text-sm tab-inactive rounded-t-lg">
+                <button onclick="handleTabClick('list')" id="tab-list" class="flex-1 py-3 text-center font-medium text-sm tab-inactive rounded-t-lg">
                     顧客一覧
                 </button>
             </div>
@@ -127,47 +155,47 @@
                     <!-- 顧客名 -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">顧客名 <span class="text-gray-400 text-xs">（任意）</span></label>
-                        <input type="text" id="reg-name" placeholder="例: 田中様、〇〇マンション3階の方" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                        <input type="text" id="reg-name" placeholder="例: 田中様、〇〇マンション3階の方" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent" oninput="markFormDirty()">
                     </div>
 
                     <!-- 対面者 -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">対面者 <span class="text-gray-400 text-xs">（任意・複数選択可）</span></label>
                         <div class="flex flex-wrap gap-2" id="reg-contact-group">
-                            <label class="checkbox-label"><input type="checkbox" value="奥" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="夫" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">夫</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おば" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おじ" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="子" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">子</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-contact')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="奥様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="旦那様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">旦那様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おば様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おじ様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="お子様" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">お子様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-contact'); markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
-                        <input type="text" id="reg-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                        <input type="text" id="reg-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markFormDirty()">
                     </div>
 
                     <!-- 住所 -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">住所 <span class="text-gray-400 text-xs">（任意）</span></label>
-                        <input type="text" id="reg-address" placeholder="例: 〇〇町1-2-3" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                        <input type="text" id="reg-address" placeholder="例: 〇〇町1-2-3" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent" oninput="markFormDirty()">
                     </div>
 
                     <!-- ニーズ -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">ニーズ <span class="text-gray-400 text-xs">（任意・複数選択可）</span></label>
                         <div class="flex flex-wrap gap-2" id="reg-needs-group">
-                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-needs')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden" onchange="markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('reg-needs'); markFormDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
-                        <input type="text" id="reg-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                        <input type="text" id="reg-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markFormDirty()">
                     </div>
 
                     <!-- 訪問メモ -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ <span class="text-gray-400 text-xs">（任意）</span></label>
-                        <textarea id="reg-memo" rows="4" placeholder="見た目、提案内容、会話内容など" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent"></textarea>
+                        <textarea id="reg-memo" rows="4" placeholder="見た目、提案内容、会話内容など" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent" oninput="markFormDirty()"></textarea>
                     </div>
 
                     <!-- 初回訪問日時 -->
@@ -175,9 +203,9 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
                             <div class="flex items-center gap-1">
-                                <button onclick="changeDate('reg-date', -1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">◀</button>
+                                <button onclick="changeDate('reg-date', -1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">◀</button>
                                 <input type="date" id="reg-date" class="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-center">
-                                <button onclick="changeDate('reg-date', 1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">▶</button>
+                                <button onclick="changeDate('reg-date', 1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">▶</button>
                             </div>
                         </div>
                         <div>
@@ -187,7 +215,7 @@
                     </div>
 
                     <!-- 登録ボタン -->
-                    <button onclick="registerCustomer()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
+                    <button onclick="registerCustomer()" id="register-btn" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
                         🌻 登録する
                     </button>
                 </div>
@@ -200,28 +228,15 @@
             <div class="bg-white rounded-xl shadow-md p-4">
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
-                    <input type="text" id="search-input" placeholder="名前、住所、訪問メモで検索..." oninput="filterCustomers()" class="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                    <input type="text" id="search-input" placeholder="名前、住所、訪問メモで検索..." oninput="filterCustomers()" class="w-full border border-gray-300 rounded-lg pl-10 pr-10 py-3 focus:ring-2 focus:ring-amber-400 focus:border-transparent">
+                    <button onclick="clearSearch()" id="search-clear-btn" class="search-clear text-gray-400 hover:text-gray-600 hidden p-1">✕</button>
                 </div>
             </div>
 
-            <!-- 50音 Filter -->
+            <!-- Filter Buttons -->
             <div class="bg-white rounded-xl shadow-md p-4">
-                <div class="flex flex-wrap gap-1 justify-center" id="kana-filter">
-                    <button onclick="setKanaFilter('全て')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-amber-500 text-white" data-kana="全て">全て</button>
-                    <button onclick="setKanaFilter('ア')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ア">ア</button>
-                    <button onclick="setKanaFilter('カ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="カ">カ</button>
-                    <button onclick="setKanaFilter('サ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="サ">サ</button>
-                    <button onclick="setKanaFilter('タ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="タ">タ</button>
-                    <button onclick="setKanaFilter('ナ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ナ">ナ</button>
-                    <button onclick="setKanaFilter('ハ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ハ">ハ</button>
-                    <button onclick="setKanaFilter('マ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="マ">マ</button>
-                    <button onclick="setKanaFilter('ヤ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ヤ">ヤ</button>
-                    <button onclick="setKanaFilter('ラ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ラ">ラ</button>
-                    <button onclick="setKanaFilter('ワ')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="ワ">ワ</button>
-                    <button onclick="setKanaFilter('その他')" class="kana-btn px-2 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700" data-kana="その他">他</button>
-                </div>
-                <div class="mt-3 flex justify-center">
-                    <button onclick="setFollowUpFilter()" id="followup-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
+                <div class="flex justify-center">
+                    <button onclick="toggleFollowUpFilter()" id="followup-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
                         🔴 要フォロー (15日以上)
                     </button>
                 </div>
@@ -242,7 +257,7 @@
                 <button onclick="exportToExcel()" class="w-full bg-green-500 text-white font-medium py-3 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2">
                     <span>📊</span> Excelに出力
                 </button>
-                <button onclick="document.getElementById('import-file').click()" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                <button onclick="confirmImport()" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
                     <span>📥</span> Excelから復元
                 </button>
                 <input type="file" id="import-file" accept=".xlsx" class="hidden" onchange="importFromExcel(event)">
@@ -251,9 +266,14 @@
 
         <!-- Detail Screen -->
         <div id="screen-detail" class="hidden space-y-6">
-            <button onclick="backToList()" class="flex items-center gap-2 text-amber-600 font-medium hover:text-amber-700">
+            <button onclick="handleBackToList()" class="flex items-center gap-2 text-amber-600 font-medium hover:text-amber-700">
                 <span>←</span> 顧客一覧に戻る
             </button>
+
+            <!-- Last Visit Info -->
+            <div id="detail-last-visit-info" class="bg-amber-100 rounded-lg p-3 text-center">
+                <span class="text-amber-800 font-medium" id="detail-last-visit-text">最終訪問: -</span>
+            </div>
 
             <!-- Customer Info Edit -->
             <div class="bg-white rounded-xl shadow-md p-6">
@@ -264,38 +284,38 @@
                 <div class="space-y-5">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">顧客名</label>
-                        <input type="text" id="detail-name" class="w-full border border-gray-300 rounded-lg px-4 py-3">
+                        <input type="text" id="detail-name" class="w-full border border-gray-300 rounded-lg px-4 py-3" oninput="markDetailDirty()">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">対面者</label>
                         <div class="flex flex-wrap gap-2" id="detail-contact-group">
-                            <label class="checkbox-label"><input type="checkbox" value="奥" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="夫" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">夫</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おば" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="おじ" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="子" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">子</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-contact')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="奥様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">奥様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="旦那様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">旦那様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おば様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おば様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="おじ様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">おじ様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="お子様" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">お子様</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-contact'); markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
-                        <input type="text" id="detail-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                        <input type="text" id="detail-contact-other" placeholder="その他の対面者を入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markDetailDirty()">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
-                        <input type="text" id="detail-address" class="w-full border border-gray-300 rounded-lg px-4 py-3">
+                        <input type="text" id="detail-address" class="w-full border border-gray-300 rounded-lg px-4 py-3" oninput="markDetailDirty()">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">ニーズ</label>
                         <div class="flex flex-wrap gap-2" id="detail-needs-group">
-                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
-                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-needs')"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="便秘" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">便秘</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="下痢" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">下痢</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="睡眠" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">睡眠</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="ストレス" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">ストレス</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="アレルギー" class="hidden" onchange="markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">アレルギー</span></label>
+                            <label class="checkbox-label"><input type="checkbox" value="その他" class="hidden" onchange="toggleOtherInput('detail-needs'); markDetailDirty()"><span class="inline-block px-3 py-2 border border-gray-300 rounded-lg text-sm">その他</span></label>
                         </div>
-                        <input type="text" id="detail-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                        <input type="text" id="detail-needs-other" placeholder="その他のニーズを入力" class="hidden mt-2 w-full border border-gray-300 rounded-lg px-4 py-2 text-sm" oninput="markDetailDirty()">
                     </div>
                 </div>
             </div>
@@ -320,9 +340,9 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
                             <div class="flex items-center gap-1">
-                                <button onclick="changeDate('detail-visit-date', -1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">◀</button>
+                                <button onclick="changeDate('detail-visit-date', -1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">◀</button>
                                 <input type="date" id="detail-visit-date" class="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-center">
-                                <button onclick="changeDate('detail-visit-date', 1)" class="px-2 py-2 bg-gray-100 rounded-lg text-gray-600">▶</button>
+                                <button onclick="changeDate('detail-visit-date', 1)" class="date-nav-btn bg-gray-100 rounded-lg text-gray-600 text-lg font-bold">▶</button>
                             </div>
                         </div>
                         <div>
@@ -331,15 +351,18 @@
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ <span class="text-red-500">*</span></label>
-                        <textarea id="detail-visit-memo" rows="4" placeholder="訪問内容を記録（必須）" class="w-full border border-gray-300 rounded-lg px-4 py-3"></textarea>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
+                        <textarea id="detail-visit-memo" rows="4" placeholder="訪問内容を記録" class="w-full border border-gray-300 rounded-lg px-4 py-3" oninput="markDetailDirty()"></textarea>
                     </div>
+                    <button onclick="addVisitRecord()" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                        📝 この訪問記録を追加
+                    </button>
                 </div>
             </div>
 
             <!-- Save Button -->
             <button onclick="saveCustomerDetail()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all text-lg">
-                💾 保存して一覧に戻る
+                💾 顧客情報を保存して戻る
             </button>
 
             <!-- Delete Button -->
@@ -355,9 +378,23 @@
         let idCounter = parseInt(localStorage.getItem('customerIdCounter') || '1');
         let lastBackupDate = localStorage.getItem('lastBackupDate');
         let currentCustomerId = null;
-        let currentKanaFilter = '全て';
         let isFollowUpFilter = false;
         let editingVisitIndex = null;
+        let isFormDirty = false;
+        let isDetailDirty = false;
+        let deletedCustomer = null;
+        let deletedVisit = null;
+        let undoTimeout = null;
+        let confirmCallback = null;
+        let isProcessing = false;
+
+        // ===== Utility: HTML Escape =====
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         // ===== Initialize =====
         document.addEventListener('DOMContentLoaded', () => {
@@ -368,9 +405,9 @@
 
         function initTimeSelects() {
             const timeOptions = [];
-            for (let h = 9; h <= 18; h++) {
+            for (let h = 9; h <= 19; h++) {
                 timeOptions.push(`${String(h).padStart(2, '0')}:00`);
-                if (h < 18) timeOptions.push(`${String(h).padStart(2, '0')}:30`);
+                if (h < 19) timeOptions.push(`${String(h).padStart(2, '0')}:30`);
             }
             
             const selects = ['reg-time', 'detail-visit-time', 'edit-visit-time'];
@@ -382,7 +419,9 @@
                     const currentHour = now.getHours();
                     const currentMin = now.getMinutes();
                     const roundedMin = currentMin < 30 ? '00' : '30';
-                    const currentTime = `${String(currentHour).padStart(2, '0')}:${roundedMin}`;
+                    let currentTime = `${String(currentHour).padStart(2, '0')}:${roundedMin}`;
+                    if (currentHour < 9) currentTime = '09:00';
+                    if (currentHour >= 19) currentTime = '19:00';
                     if (timeOptions.includes(currentTime)) {
                         select.value = currentTime;
                     }
@@ -393,7 +432,8 @@
         function setTodayDate() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('reg-date').value = today;
-            document.getElementById('detail-visit-date').value = today;
+            const detailDate = document.getElementById('detail-visit-date');
+            if (detailDate) detailDate.value = today;
         }
 
         function changeDate(inputId, days) {
@@ -401,6 +441,41 @@
             const date = new Date(input.value);
             date.setDate(date.getDate() + days);
             input.value = date.toISOString().split('T')[0];
+        }
+
+        // ===== Form Dirty Tracking =====
+        function markFormDirty() {
+            isFormDirty = true;
+        }
+
+        function markDetailDirty() {
+            isDetailDirty = true;
+        }
+
+        function resetFormDirty() {
+            isFormDirty = false;
+        }
+
+        function resetDetailDirty() {
+            isDetailDirty = false;
+        }
+
+        // ===== Confirm Modal =====
+        function showConfirm(title, message, callback, icon = '⚠️', okBtnClass = 'bg-amber-500') {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            document.getElementById('confirm-icon').textContent = icon;
+            document.getElementById('confirm-ok-btn').className = `flex-1 py-2 px-4 ${okBtnClass} text-white rounded-lg font-medium`;
+            confirmCallback = callback;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal(result) {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            if (confirmCallback) {
+                confirmCallback(result);
+                confirmCallback = null;
+            }
         }
 
         // ===== Screen Navigation =====
@@ -430,7 +505,50 @@
             }
         }
 
-        function backToList() {
+        function handleTabClick(screen) {
+            const currentScreen = getCurrentScreen();
+            
+            if (currentScreen === 'register' && isFormDirty) {
+                showConfirm('確認', '入力内容が保存されていません。破棄して移動しますか？', (result) => {
+                    if (result) {
+                        resetFormDirty();
+                        clearRegisterForm();
+                        showScreen(screen);
+                    }
+                });
+                return;
+            }
+            
+            if (currentScreen === 'detail' && isDetailDirty) {
+                showConfirm('確認', '変更内容が保存されていません。破棄して移動しますか？', (result) => {
+                    if (result) {
+                        resetDetailDirty();
+                        showScreen(screen);
+                    }
+                });
+                return;
+            }
+            
+            showScreen(screen);
+        }
+
+        function getCurrentScreen() {
+            if (!document.getElementById('screen-register').classList.contains('hidden')) return 'register';
+            if (!document.getElementById('screen-list').classList.contains('hidden')) return 'list';
+            if (!document.getElementById('screen-detail').classList.contains('hidden')) return 'detail';
+            return null;
+        }
+
+        function handleBackToList() {
+            if (isDetailDirty) {
+                showConfirm('確認', '変更内容が保存されていません。破棄して戻りますか？', (result) => {
+                    if (result) {
+                        resetDetailDirty();
+                        showScreen('list');
+                    }
+                });
+                return;
+            }
             showScreen('list');
         }
 
@@ -452,7 +570,7 @@
         function toggleOtherInput(prefix) {
             const checkbox = document.querySelector(`#${prefix}-group input[value="その他"]`);
             const otherInput = document.getElementById(`${prefix}-other`);
-            if (checkbox.checked) {
+            if (checkbox && checkbox.checked) {
                 otherInput.classList.remove('hidden');
             } else {
                 otherInput.classList.add('hidden');
@@ -461,6 +579,8 @@
         }
 
         function registerCustomer() {
+            if (isProcessing) return;
+            
             const name = document.getElementById('reg-name').value.trim();
             const contact = getCheckedValues('reg-contact-group');
             const address = document.getElementById('reg-address').value.trim();
@@ -468,6 +588,25 @@
             const memo = document.getElementById('reg-memo').value.trim();
             const date = document.getElementById('reg-date').value;
             const time = document.getElementById('reg-time').value;
+
+            // 空登録の確認
+            if (!name && !address && contact.length === 0 && needs.length === 0 && !memo) {
+                showConfirm('確認', '何も入力されていません。空の顧客を登録しますか？', (result) => {
+                    if (result) {
+                        doRegister(name, contact, address, needs, memo, date, time);
+                    }
+                });
+                return;
+            }
+
+            doRegister(name, contact, address, needs, memo, date, time);
+        }
+
+        function doRegister(name, contact, address, needs, memo, date, time) {
+            isProcessing = true;
+            const btn = document.getElementById('register-btn');
+            btn.classList.add('btn-disabled');
+            btn.textContent = '登録中...';
 
             const customer = {
                 id: idCounter++,
@@ -483,8 +622,15 @@
 
             customers.push(customer);
             saveData();
-            showToast('登録しました');
-            clearRegisterForm();
+            
+            setTimeout(() => {
+                showToast('登録しました', '✅');
+                clearRegisterForm();
+                resetFormDirty();
+                btn.classList.remove('btn-disabled');
+                btn.textContent = '🌻 登録する';
+                isProcessing = false;
+            }, 300);
         }
 
         function clearRegisterForm() {
@@ -510,18 +656,20 @@
             const container = document.getElementById('customer-cards');
             const searchTerm = document.getElementById('search-input').value.toLowerCase();
             
+            // Show/hide clear button
+            const clearBtn = document.getElementById('search-clear-btn');
+            if (searchTerm) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+            
             let filtered = customers.filter(c => {
                 // Search filter
                 const searchMatch = !searchTerm || 
                     (c.name && c.name.toLowerCase().includes(searchTerm)) ||
                     (c.address && c.address.toLowerCase().includes(searchTerm)) ||
                     c.visitHistory.some(v => v.memo && v.memo.toLowerCase().includes(searchTerm));
-                
-                // Kana filter
-                let kanaMatch = true;
-                if (currentKanaFilter !== '全て') {
-                    kanaMatch = matchesKanaFilter(c.name, currentKanaFilter);
-                }
                 
                 // Follow-up filter
                 let followUpMatch = true;
@@ -530,13 +678,27 @@
                     followUpMatch = days >= 15;
                 }
                 
-                return searchMatch && kanaMatch && followUpMatch;
+                return searchMatch && followUpMatch;
             });
 
             document.getElementById('customer-count').textContent = filtered.length;
 
+            if (customers.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="text-5xl mb-4">🌻</div>
+                        <p class="text-gray-600 mb-2">まだ顧客がいません</p>
+                        <p class="text-gray-500 text-sm">「新規顧客登録」から追加しましょう</p>
+                        <button onclick="showScreen('register')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg font-medium">
+                            新規顧客を登録する
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
             if (filtered.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8">顧客が見つかりません</div>';
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">条件に一致する顧客が見つかりません</div>';
                 return;
             }
 
@@ -544,7 +706,12 @@
                 const days = getDaysSinceLastVisit(c);
                 let badgeClass = 'visit-badge-normal';
                 let badgeIcon = '';
-                if (days >= 15) {
+                let badgeText = `${days}日前`;
+                
+                if (days === -1) {
+                    badgeClass = 'visit-badge-none';
+                    badgeText = '記録なし';
+                } else if (days >= 15) {
                     badgeClass = 'visit-badge-danger';
                     badgeIcon = '🔴 ';
                 } else if (days >= 8) {
@@ -552,27 +719,37 @@
                     badgeIcon = '⚠️ ';
                 }
                 
+                const latestMemo = getLatestMemo(c);
+                const memoPreview = latestMemo ? escapeHtml(latestMemo.substring(0, 25)) + (latestMemo.length > 25 ? '...' : '') : '';
+                
                 return `
                     <div class="customer-card bg-white rounded-xl shadow-md p-4">
                         <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-gray-800">${c.name || '(未入力)'}</h3>
-                            <span class="text-xs px-2 py-1 rounded-full text-white ${badgeClass}">${badgeIcon}${days}日前</span>
+                            <h3 class="font-bold text-gray-800">${escapeHtml(c.name) || '(未入力)'}</h3>
+                            <span class="text-xs px-2 py-1 rounded-full text-white ${badgeClass}">${badgeIcon}${badgeText}</span>
                         </div>
                         <div class="text-sm text-gray-600 space-y-1">
-                            ${c.contact ? `<p><span class="text-gray-400">対面者:</span> ${c.contact}</p>` : ''}
-                            ${c.address ? `<p><span class="text-gray-400">住所:</span> ${c.address}</p>` : ''}
-                            ${c.needs ? `<p><span class="text-gray-400">ニーズ:</span> ${c.needs}</p>` : ''}
+                            ${c.contact ? `<p><span class="text-gray-400">対面者:</span> ${escapeHtml(c.contact)}</p>` : ''}
+                            ${c.address ? `<p><span class="text-gray-400">住所:</span> ${escapeHtml(c.address)}</p>` : ''}
+                            ${c.needs ? `<p><span class="text-gray-400">ニーズ:</span> ${escapeHtml(c.needs)}</p>` : ''}
+                            ${memoPreview ? `<p class="text-gray-400 italic">${memoPreview}</p>` : ''}
                         </div>
                         <button onclick="showCustomerDetail(${c.id})" class="mt-3 w-full bg-amber-100 text-amber-700 font-medium py-2 rounded-lg hover:bg-amber-200 transition-colors">
-                            情報確認・訪問記録を追加
+                            詳細を見る
                         </button>
                     </div>
                 `;
             }).join('');
         }
 
+        function getLatestMemo(customer) {
+            if (!customer.visitHistory || customer.visitHistory.length === 0) return '';
+            const sorted = [...customer.visitHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+            return sorted[0].memo || '';
+        }
+
         function getDaysSinceLastVisit(customer) {
-            if (!customer.visitHistory || customer.visitHistory.length === 0) return 999;
+            if (!customer.visitHistory || customer.visitHistory.length === 0) return -1;
             const lastVisit = customer.visitHistory.reduce((latest, v) => {
                 const d = new Date(v.date);
                 return d > latest ? d : latest;
@@ -582,54 +759,7 @@
             return diff;
         }
 
-        function matchesKanaFilter(name, filter) {
-            if (!name) return filter === 'その他';
-            const firstChar = name.charAt(0);
-            
-            const kanaMap = {
-                'ア': /^[あいうえおアイウエオ亜-鑌]/,
-                'カ': /^[かきくけこがぎぐげごカキクケコガギグゲゴ]/,
-                'サ': /^[さしすせそざじずぜぞサシスセソザジズゼゾ]/,
-                'タ': /^[たちつてとだぢづでどタチツテトダヂヅデド]/,
-                'ナ': /^[なにぬねのナニヌネノ]/,
-                'ハ': /^[はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポ]/,
-                'マ': /^[まみむめもマミムメモ]/,
-                'ヤ': /^[やゆよヤユヨ]/,
-                'ラ': /^[らりるれろラリルレロ]/,
-                'ワ': /^[わをんワヲン]/,
-            };
-
-            if (filter === 'その他') {
-                for (const regex of Object.values(kanaMap)) {
-                    if (regex.test(firstChar)) return false;
-                }
-                return true;
-            }
-
-            return kanaMap[filter] ? kanaMap[filter].test(firstChar) : false;
-        }
-
-        function setKanaFilter(kana) {
-            currentKanaFilter = kana;
-            isFollowUpFilter = false;
-            
-            document.querySelectorAll('#kana-filter button').forEach(btn => {
-                if (btn.dataset.kana === kana) {
-                    btn.classList.remove('bg-gray-100', 'text-gray-700');
-                    btn.classList.add('bg-amber-500', 'text-white');
-                } else {
-                    btn.classList.remove('bg-amber-500', 'text-white');
-                    btn.classList.add('bg-gray-100', 'text-gray-700');
-                }
-            });
-            
-            document.getElementById('followup-btn').classList.remove('bg-red-500', 'text-white');
-            document.getElementById('followup-btn').classList.add('bg-red-100', 'text-red-700');
-            
-            renderCustomerList();
-        }
-
-        function setFollowUpFilter() {
+        function toggleFollowUpFilter() {
             isFollowUpFilter = !isFollowUpFilter;
             
             const btn = document.getElementById('followup-btn');
@@ -648,6 +778,12 @@
             renderCustomerList();
         }
 
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-clear-btn').classList.add('hidden');
+            renderCustomerList();
+        }
+
         // ===== Customer Detail =====
         function showCustomerDetail(id) {
             currentCustomerId = id;
@@ -663,6 +799,17 @@
             // Set needs checkboxes
             setCheckboxValues('detail-needs-group', customer.needs);
             
+            // Update last visit info
+            const days = getDaysSinceLastVisit(customer);
+            const lastVisitText = document.getElementById('detail-last-visit-text');
+            if (days === -1) {
+                lastVisitText.textContent = '最終訪問: 記録なし';
+            } else if (days === 0) {
+                lastVisitText.textContent = '最終訪問: 今日';
+            } else {
+                lastVisitText.textContent = `最終訪問: ${days}日前`;
+            }
+            
             // Render visit history
             renderVisitHistory(customer);
             
@@ -671,13 +818,14 @@
             initTimeSelects();
             document.getElementById('detail-visit-memo').value = '';
             
+            resetDetailDirty();
             showScreen('detail');
         }
 
         function setCheckboxValues(groupId, valueString) {
             const group = document.getElementById(groupId);
             const values = valueString ? valueString.split(', ').map(v => v.trim()) : [];
-            const standardValues = ['奥', '夫', 'おば', 'おじ', '子', '便秘', '下痢', '睡眠', 'ストレス', 'アレルギー'];
+            const standardValues = ['奥様', '旦那様', 'おば様', 'おじ様', 'お子様', '便秘', '下痢', '睡眠', 'ストレス', 'アレルギー'];
             
             group.querySelectorAll('input').forEach(cb => {
                 cb.checked = values.includes(cb.value);
@@ -730,12 +878,16 @@
                     <div class="border border-gray-200 rounded-lg p-4">
                         <div class="flex justify-between items-start mb-2">
                             <span class="font-medium text-gray-800">${formatDateTime(visit.date)}</span>
-                            <div class="flex gap-2">
-                                <button onclick="editVisit(${originalIdx})" class="text-blue-500 text-sm hover:underline">編集</button>
-                                <button onclick="deleteVisit(${originalIdx})" class="text-red-500 text-sm hover:underline">削除</button>
+                            <div class="flex gap-1">
+                                <button onclick="editVisit(${originalIdx})" class="icon-btn text-blue-500 hover:bg-blue-50 rounded-lg" title="編集">
+                                    ✏️
+                                </button>
+                                <button onclick="confirmDeleteVisit(${originalIdx})" class="icon-btn text-red-500 hover:bg-red-50 rounded-lg" title="削除">
+                                    🗑️
+                                </button>
                             </div>
                         </div>
-                        <p class="text-gray-600 text-sm whitespace-pre-wrap">${visit.memo || '(メモなし)'}</p>
+                        <p class="text-gray-600 text-sm whitespace-pre-wrap">${escapeHtml(visit.memo) || '(メモなし)'}</p>
                     </div>
                 `;
             }).join('');
@@ -743,6 +895,7 @@
 
         function formatDateTime(dateStr) {
             const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return dateStr;
             const y = date.getFullYear();
             const m = String(date.getMonth() + 1).padStart(2, '0');
             const d = String(date.getDate()).padStart(2, '0');
@@ -763,7 +916,16 @@
             
             const hours = String(date.getHours()).padStart(2, '0');
             const mins = date.getMinutes() < 30 ? '00' : '30';
-            document.getElementById('edit-visit-time').value = `${hours}:${mins}`;
+            const timeValue = `${hours}:${mins}`;
+            const timeSelect = document.getElementById('edit-visit-time');
+            
+            // Check if time exists in options, if not add it
+            const options = Array.from(timeSelect.options).map(o => o.value);
+            if (options.includes(timeValue)) {
+                timeSelect.value = timeValue;
+            } else {
+                timeSelect.value = options[0];
+            }
             
             document.getElementById('edit-visit-memo').value = visit.memo || '';
             
@@ -792,20 +954,69 @@
             
             saveData();
             renderVisitHistory(customer);
+            updateLastVisitInfo(customer);
             closeEditVisitModal();
-            showToast('訪問記録を更新しました');
+            showToast('訪問記録を更新しました', '✅');
+        }
+
+        function confirmDeleteVisit(idx) {
+            showConfirm('削除確認', 'この訪問記録を削除しますか？', (result) => {
+                if (result) {
+                    deleteVisit(idx);
+                }
+            }, '🗑️', 'bg-red-500');
         }
 
         function deleteVisit(idx) {
-            if (!confirm('この訪問記録を削除しますか？')) return;
-            
             const customer = customers.find(c => c.id === currentCustomerId);
             if (!customer) return;
+            
+            // Store for undo
+            deletedVisit = {
+                customerId: currentCustomerId,
+                index: idx,
+                data: {...customer.visitHistory[idx]}
+            };
             
             customer.visitHistory.splice(idx, 1);
             saveData();
             renderVisitHistory(customer);
-            showToast('訪問記録を削除しました');
+            updateLastVisitInfo(customer);
+            showUndoToast('訪問記録を削除しました');
+        }
+
+        function updateLastVisitInfo(customer) {
+            const days = getDaysSinceLastVisit(customer);
+            const lastVisitText = document.getElementById('detail-last-visit-text');
+            if (days === -1) {
+                lastVisitText.textContent = '最終訪問: 記録なし';
+            } else if (days === 0) {
+                lastVisitText.textContent = '最終訪問: 今日';
+            } else {
+                lastVisitText.textContent = `最終訪問: ${days}日前`;
+            }
+        }
+
+        function addVisitRecord() {
+            const customer = customers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
+            
+            const memo = document.getElementById('detail-visit-memo').value.trim();
+            const date = document.getElementById('detail-visit-date').value;
+            const time = document.getElementById('detail-visit-time').value;
+            
+            customer.visitHistory.push({
+                date: `${date} ${time}`,
+                memo: memo
+            });
+            
+            saveData();
+            renderVisitHistory(customer);
+            updateLastVisitInfo(customer);
+            document.getElementById('detail-visit-memo').value = '';
+            setTodayDate();
+            initTimeSelects();
+            showToast('訪問記録を追加しました', '✅');
         }
 
         function saveCustomerDetail() {
@@ -817,30 +1028,64 @@
             customer.address = document.getElementById('detail-address').value.trim();
             customer.needs = getCheckedValues('detail-needs-group').join(', ');
             
-            // Add new visit if memo is filled
-            const memo = document.getElementById('detail-visit-memo').value.trim();
-            if (memo) {
-                const date = document.getElementById('detail-visit-date').value;
-                const time = document.getElementById('detail-visit-time').value;
-                customer.visitHistory.push({
-                    date: `${date} ${time}`,
-                    memo: memo
-                });
-            }
-            
             saveData();
-            showToast('保存しました');
+            resetDetailDirty();
+            showToast('保存しました', '✅');
             showScreen('list');
         }
 
         function deleteCustomer() {
-            if (!confirm('この顧客を削除しますか？削除すると復元できません。')) return;
-            if (!confirm('本当に削除しますか？')) return;
+            const customer = customers.find(c => c.id === currentCustomerId);
+            if (!customer) return;
             
-            customers = customers.filter(c => c.id !== currentCustomerId);
-            saveData();
-            showToast('顧客を削除しました');
-            showScreen('list');
+            showConfirm('削除確認', `「${customer.name || '(未入力)'}」を削除しますか？`, (result) => {
+                if (result) {
+                    // Store for undo
+                    deletedCustomer = {...customer};
+                    
+                    customers = customers.filter(c => c.id !== currentCustomerId);
+                    saveData();
+                    resetDetailDirty();
+                    showScreen('list');
+                    showUndoToast('顧客を削除しました');
+                }
+            }, '🗑️', 'bg-red-500');
+        }
+
+        // ===== Undo Feature =====
+        function showUndoToast(message) {
+            clearTimeout(undoTimeout);
+            document.getElementById('undo-message').textContent = message;
+            document.getElementById('undo-toast').classList.remove('hidden');
+            
+            undoTimeout = setTimeout(() => {
+                document.getElementById('undo-toast').classList.add('hidden');
+                deletedCustomer = null;
+                deletedVisit = null;
+            }, 5000);
+        }
+
+        function undoDelete() {
+            clearTimeout(undoTimeout);
+            document.getElementById('undo-toast').classList.add('hidden');
+            
+            if (deletedCustomer) {
+                customers.push(deletedCustomer);
+                saveData();
+                renderCustomerList();
+                showToast('元に戻しました', '↩️');
+                deletedCustomer = null;
+            } else if (deletedVisit) {
+                const customer = customers.find(c => c.id === deletedVisit.customerId);
+                if (customer) {
+                    customer.visitHistory.splice(deletedVisit.index, 0, deletedVisit.data);
+                    saveData();
+                    renderVisitHistory(customer);
+                    updateLastVisitInfo(customer);
+                    showToast('元に戻しました', '↩️');
+                }
+                deletedVisit = null;
+            }
         }
 
         // ===== Data Storage =====
@@ -879,25 +1124,27 @@
             XLSX.writeFile(wb, `顧客リスト_${today}.xlsx`);
             
             localStorage.setItem('lastBackupDate', new Date().toISOString());
-            showToast('Excelファイルを保存しました');
+            showToast('Excelファイルを保存しました', '📊');
+        }
+
+        function confirmImport() {
+            const count = customers.length;
+            showConfirm(
+                '⚠️ データ復元の確認',
+                `現在の${count}件のデータが全て削除され、Excelファイルの内容に置き換わります。この操作は元に戻せません。`,
+                (result) => {
+                    if (result) {
+                        document.getElementById('import-file').click();
+                    }
+                },
+                '⚠️',
+                'bg-red-500'
+            );
         }
 
         function importFromExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
-            if (!confirm('⚠️ 現在のデータは全て削除されます。続けますか？')) {
-                event.target.value = '';
-                return;
-            }
-            if (!confirm('⚠️ 全てのデータが削除され置き換えられます。本当に続けますか？')) {
-                event.target.value = '';
-                return;
-            }
-            if (!confirm('最終確認：データを復元しますか？')) {
-                event.target.value = '';
-                return;
-            }
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -921,10 +1168,10 @@
                     idCounter = maxId + 1;
                     
                     saveData();
-                    showToast(`データを復元しました！${customers.length}件の顧客データ`);
+                    showToast(`${customers.length}件のデータを復元しました`, '✅');
                     renderCustomerList();
                 } catch (err) {
-                    alert('ファイルの読み込みに失敗しました。正しいExcelファイルか確認してください。');
+                    showToast('ファイルの読み込みに失敗しました', '❌');
                     console.error(err);
                 }
             };
@@ -962,17 +1209,21 @@
         }
 
         // ===== Toast =====
-        function showToast(message) {
+        function showToast(message, icon = '✅') {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast-icon').textContent = icon;
             toast.classList.remove('hidden');
             setTimeout(() => {
                 toast.classList.add('hidden');
-            }, 3000);
+            }, 5000);
         }
 
-        // ===== Service Worker Registration (disabled for debugging) =====
-        // Service Workerを無効化し、既存のものも削除
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        // ===== Service Worker Registration (disabled) =====
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 registrations.forEach(registration => {
