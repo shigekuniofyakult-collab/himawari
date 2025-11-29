@@ -169,17 +169,15 @@
             </div>
         </div>
         <div id="scr-list" class="hidden space-y-4">
-            <div class="bg-white rounded-xl shadow-md p-4">
-                <div class="grid grid-cols-3 gap-2 text-center text-sm">
-                    <div class="bg-blue-50 rounded-lg p-2"><div class="text-blue-600 font-bold" id="sum-total">0</div><div class="text-gray-500 text-xs">登録</div></div>
-                    <div class="bg-amber-50 rounded-lg p-2"><div class="text-amber-600 font-bold" id="sum-comm">0</div><div class="text-gray-500 text-xs">コミュニケーション</div></div>
-                    <div class="bg-green-50 rounded-lg p-2"><div class="text-green-600 font-bold" id="sum-acq">0</div><div class="text-gray-500 text-xs">CP申込</div></div>
+            <div class="bg-white rounded-xl shadow-md p-3">
+                <div class="text-center">
+                    <span class="text-gray-600 text-sm">登録数：</span><span class="text-blue-600 font-bold text-lg" id="sum-total">0</span><span class="text-gray-600 text-sm">件</span>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-md p-4">
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-                    <input type="text" id="search" placeholder="検索..." oninput="render()" class="w-full border rounded-lg pl-10 pr-10 py-3">
+                    <input type="text" id="search" placeholder="検索... 例: 田中, 桜町, 便秘" oninput="render()" class="w-full border rounded-lg pl-10 pr-10 py-3">
                     <button onclick="clrSearch()" id="search-clr" class="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 hidden text-gray-400 flex items-center justify-center">✕</button>
                 </div>
             </div>
@@ -308,7 +306,7 @@
                     <button onclick="cancelWeek2()" class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-sm">2週目お届けを取り消す</button>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-5">
+            <div id="acq-section" class="bg-white rounded-xl shadow-md p-5">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">🎯 CP申込ステータス</h2>
                 <div id="acq-no"><p class="text-gray-600 mb-3">まだCP申込されていません</p>
                     <button onclick="markAcq()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl">🎉 CP申込済みにする</button></div>
@@ -330,6 +328,18 @@
                             <button onclick="cancelCont()" class="w-full bg-gray-200 text-gray-600 py-1 rounded-lg text-xs">継続を取り消す</button>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div id="cont2-section" class="bg-white rounded-xl shadow-md p-5 hidden">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">🔄 継続ステータス</h2>
+                <div id="cont2-no"><p class="text-gray-600 mb-3">まだ継続されていません</p>
+                    <button onclick="markCont2()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl">🔄 継続済みにする</button></div>
+                <div id="cont2-yes" class="hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                        <div class="text-blue-700 font-bold mb-1">🔄 継続済み</div>
+                        <div class="text-blue-600 text-sm" id="cont2-date"></div>
+                    </div>
+                    <button onclick="cancelCont2()" class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-sm">継続を取り消す</button>
                 </div>
             </div>
             <button onclick="backToList()" class="w-full bg-gray-100 text-gray-600 font-medium py-3 rounded-xl">← 顧客一覧に戻る</button>
@@ -414,7 +424,7 @@ function backToList(){if(detDirty){showCf('確認','変更を破棄しますか�
 
 function showCf(t,m,cb,i='⚠️',ok='OK',cls='bg-amber-500'){document.getElementById('cf-title').textContent=t;document.getElementById('cf-msg').textContent=m;document.getElementById('cf-icon').textContent=i;document.getElementById('cf-ok').textContent=ok;document.getElementById('cf-ok').className='flex-1 py-3 '+cls+' text-white rounded-lg font-medium';cfCb=cb;document.getElementById('confirm-modal').classList.remove('hidden');}
 
-function closeConfirm(r){document.getElementById('confirm-modal').classList.add('hidden');if(cfCb){cfCb(r);cfCb=null;}}
+function closeConfirm(r){document.getElementById('confirm-modal').classList.add('hidden');if(cfCb){const cb=cfCb;cfCb=null;setTimeout(()=>cb(r),100);}}
 
 function getChk(id){return Array.from(document.getElementById(id).querySelectorAll('input:checked')).map(x=>x.value);}
 
@@ -426,7 +436,7 @@ function regCustomer(){if(processing)return;const nameVal=document.getElementByI
 
 function clrForm(){document.getElementById('r-name').value='';document.getElementById('r-kana').value='';document.getElementById('r-addr').value='';document.getElementById('r-memo').value='';document.querySelectorAll('#r-contact input,#r-needs input').forEach(x=>x.checked=false);document.querySelector('input[name="r-camp"][value="4week"]').checked=true;setToday();updChkStyle('r-contact');updChkStyle('r-needs');}
 
-function render(){updSum();const q=document.getElementById('search').value.toLowerCase();document.getElementById('search-clr').classList.toggle('hidden',!q);let f=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat&&c.status!==fStat)return false;if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});document.getElementById('cnt').textContent=f.length;const cont=document.getElementById('cards');if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg">新規登録</button></div>';return;}if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl">該当なし</div>';return;}cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status);const ab=c.acquired?'<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-600">🎉CP申込</span>':'';const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px]">${esc(c.name)||'(未入力)'}</h3>${sb}${ab}${cb}</div>${db}</div><div class="text-sm text-gray-600">${c.kana?`<p class="text-gray-400 text-xs">${esc(c.kana)}</p>`:''}${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');}
+function render(){updSum();const q=document.getElementById('search').value.toLowerCase();document.getElementById('search-clr').classList.toggle('hidden',!q);let f=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat&&c.status!==fStat)return false;if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});document.getElementById('cnt').textContent=f.length;const cont=document.getElementById('cards');if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg">新規登録</button></div>';return;}if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl">該当なし</div>';return;}cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status);const ab=c.acquired?'<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-600">🎉CP申込</span>':'';const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px]">${esc(c.name)||'(未入力)'}</h3>${sb}${ab}${cb}</div>${db}</div><div class="text-sm text-gray-600">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');}
 
 function statBadge(s){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm">コミュニケーション</span>',acquired:'<span class="text-xs px-2 py-1 rounded-full st-acq">CP申込</span>'};return m[s]||'';}
 
@@ -434,7 +444,7 @@ function matchKana(t,f){if(!t)return f==='他';const c=t.charAt(0);const r={あ:
 
 function daysSince(c){if(!c.visitHistory||c.visitHistory.length===0)return-1;const lv=c.visitHistory.reduce((l,v)=>{const d=new Date(v.date);return d>l?d:l;},new Date(0));return Math.floor((new Date()-lv)/(1000*60*60*24));}
 
-function updSum(){document.getElementById('sum-total').textContent=data.length;document.getElementById('sum-comm').textContent=data.filter(c=>c.visitHistory.length>1).length;document.getElementById('sum-acq').textContent=data.filter(c=>c.acquired).length;}
+function updSum(){document.getElementById('sum-total').textContent=data.length;}
 
 function setKana(k){fKana=k;document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if((k===''&&b.textContent==='全て')||b.textContent===k)b.classList.add('on');});updFilterClear();render();}
 
@@ -451,7 +461,7 @@ function showDet(id){curId=id;const c=data.find(x=>x.id===id);if(!c)return;const
 
 function updStatBadge(s){const b=document.getElementById('d-stat-badge');const m={sampling:{text:'サンプリング',cls:'st-samp'},communication:{text:'コミュニケーション',cls:'st-comm'},acquired:{text:'CP申込',cls:'st-acq'}};const info=m[s]||{text:'',cls:''};b.textContent=info.text;b.className='text-xs px-2 py-1 rounded-full '+info.cls;}
 
-function updCampUI(){const c=data.find(x=>x.id===curId);if(!c)return;const camp=document.querySelector('input[name="d-camp"]:checked').value;document.getElementById('week2-section').classList.toggle('hidden',camp!=='2week');}
+function updCampUI(){const c=data.find(x=>x.id===curId);if(!c)return;const camp=document.querySelector('input[name="d-camp"]:checked').value;const is2week=camp==='2week';document.getElementById('week2-section').classList.toggle('hidden',!is2week);document.getElementById('acq-section').classList.toggle('hidden',is2week);document.getElementById('cont2-section').classList.toggle('hidden',!is2week);if(is2week)updCont2UI(c);}
 
 function updAcqUI(c){if(c.acquired){document.getElementById('acq-no').classList.add('hidden');document.getElementById('acq-yes').classList.remove('hidden');document.getElementById('acq-date').textContent=c.acquiredDate?'申込日: '+fmtDate(c.acquiredDate):'';}else{document.getElementById('acq-no').classList.remove('hidden');document.getElementById('acq-yes').classList.add('hidden');}}
 
@@ -471,11 +481,17 @@ function openWeek2Modal(){setToday();document.getElementById('w2-memo').value=''
 
 function closeWeek2Modal(){document.getElementById('week2-modal').classList.add('hidden');}
 
-function saveWeek2(){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=true;c.week2Date=document.getElementById('w2-date').value+' '+document.getElementById('w2-time').value;c.week2Memo=document.getElementById('w2-memo').value.trim();save();updWeek2UI(c);closeWeek2Modal();toast('📦2週目お届けを記録しました');}
+function saveWeek2(){const c=data.find(x=>x.id===curId);if(!c)return;const w2Date=document.getElementById('w2-date').value+' '+document.getElementById('w2-time').value;const w2Memo=document.getElementById('w2-memo').value.trim();c.week2Delivered=true;c.week2Date=w2Date;c.week2Memo=w2Memo;c.visitHistory=c.visitHistory.filter(v=>!v.isWeek2);c.visitHistory.push({date:w2Date,memo:'📦2週目お届け'+(w2Memo?' - '+w2Memo:''),isWeek2:true});save();updWeek2UI(c);renderVisits(c);closeWeek2Modal();toast('📦2週目お届けを記録しました');}
 
-function cancelWeek2(){showCf('確認','2週目お届けを取り消しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';save();updWeek2UI(c);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
+function cancelWeek2(){showCf('確認','2週目お届けを取り消しますか？\n訪問履歴からも削除されます。',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';c.visitHistory=c.visitHistory.filter(v=>!v.isWeek2);save();updWeek2UI(c);renderVisits(c);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
 
-function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-500 text-center py-4">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);return`<div class="border rounded-lg p-3"><div class="flex justify-between items-start mb-1"><span class="font-medium text-gray-800 text-sm">${fmtDT(v.date)}</span><div class="flex gap-1"><button onclick="event.stopPropagation();editV(${i})" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button><button onclick="event.stopPropagation();cfDelV(${i})" class="text-red-500 text-sm px-3 py-2 rounded hover:bg-red-50">削除</button></div></div><p class="text-gray-600 text-sm whitespace-pre-wrap">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
+function updCont2UI(c){if(c.continued){document.getElementById('cont2-no').classList.add('hidden');document.getElementById('cont2-yes').classList.remove('hidden');document.getElementById('cont2-date').textContent=c.continuedDate?'継続日: '+fmtDate(c.continuedDate):'';}else{document.getElementById('cont2-no').classList.remove('hidden');document.getElementById('cont2-yes').classList.add('hidden');}}
+
+function markCont2(){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=true;c.continuedDate=new Date().toISOString();save();updCont2UI(c);toast('🔄継続済みにしました');}
+
+function cancelCont2(){showCf('確認','継続を取り消しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=false;c.continuedDate=null;save();updCont2UI(c);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
+
+function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-500 text-center py-4">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);const isW2=v.isWeek2;return`<div class="border rounded-lg p-3${isW2?' bg-purple-50 border-purple-200':''}"><div class="flex justify-between items-start mb-1"><span class="font-medium text-gray-800 text-sm">${fmtDT(v.date)}</span>${isW2?'':'<div class="flex gap-1"><button onclick="event.stopPropagation();editV('+i+')" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button><button onclick="event.stopPropagation();cfDelV('+i+')" class="text-red-500 text-sm px-3 py-2 rounded hover:bg-red-50">削除</button></div>'}</div><p class="text-gray-600 text-sm whitespace-pre-wrap">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
 
 function fmtDT(s){const d=new Date(s);if(isNaN(d))return s;return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 
@@ -528,7 +544,7 @@ function save(){localStorage.setItem('cdata',JSON.stringify(data));localStorage.
 
 function confirmDeleteAll(){showCf('⚠️ 警告','全ての顧客データを削除します。\nこの操作は取り消せません。\n\n※削除前に「Excel出力」でバックアップを取ることをお勧めします。',r=>{if(r){showCf('⚠️ 最終確認1/2','本当に全データを削除しますか？\nサンプルデータも含めて全て消えます。',r2=>{if(r2){showCf('🚨 最終確認2/2','最後の確認です。\n削除を実行してもよろしいですか？',r3=>{if(r3){data=[];idCnt=1;save();localStorage.removeItem('initialized');toast('全データを削除しました','🗑️');render();}},'🚨','完全に削除','bg-red-600');}},'⚠️','削除する','bg-red-500');}},'⚠️','続ける','bg-red-500');}
 
-function confirmRestoreSample(){const hasSample=data.some(c=>c.name&&c.name.includes('【見本】'));if(hasSample){showCf('確認','既に見本データが存在します。\nさらに追加しますか？',r=>{if(r)addSampleData();},'⚠️','追加する','bg-amber-500');}else{showCf('確認','見本データを追加しますか？\n（現在のデータは保持されます）',r=>{if(r)addSampleData();},'📋','追加','bg-blue-500');}}
+function confirmRestoreSample(){const hasSample=data.some(c=>c.name&&c.name.includes('【見本】'));if(hasSample){showCf('確認 (1/3)','既に見本データが存在します。\nさらに追加しますか？',r=>{if(r){showCf('確認 (2/3)','140件の見本データを追加します。\n続けますか？',r2=>{if(r2){showCf('最終確認 (3/3)','見本データを追加してもよろしいですか？',r3=>{if(r3)addSampleData();},'📋','追加する','bg-amber-500');}},'⚠️','続ける','bg-amber-500');}},'⚠️','次へ','bg-amber-500');}else{showCf('確認 (1/3)','見本データを追加しますか？\n（現在のデータは保持されます）',r=>{if(r){showCf('確認 (2/3)','140件の見本データを追加します。\n続けますか？',r2=>{if(r2){showCf('最終確認 (3/3)','見本データを追加してもよろしいですか？',r3=>{if(r3)addSampleData();},'📋','追加する','bg-blue-500');}},'📋','続ける','bg-blue-500');}},'📋','次へ','bg-blue-500');}}
 
 function addSampleData(){
 const LN=['田中','佐藤','鈴木','高橋','渡辺','伊藤','山本','中村','小林','加藤','吉田','山田','佐々木','松本','井上','木村','林','斎藤','清水','山口','森','池田','橋本','阿部','石川','前田','藤田','岡田','後藤','村上','近藤','石井','坂本','遠藤','青木','藤井','西村','福田','太田','三浦','藤原','岡本','松田','中川','中野','原田','小野','竹内','金子','和田','中山','石田','上田','森田','原','柴田','酒井','工藤','横山'];
@@ -550,11 +566,11 @@ const ln=ri(LN);const vc=1+Math.floor(Math.random()*4);const vh=[];
 for(let v=0;v<vc;v++){const da=28-(v*7)+Math.floor(Math.random()*5);vh.push({date:`${rd(da)} ${rt()}`,memo:v===0?ri(M1):v===1?ri(M2):v>=2?ri(M3):'フォロー訪問。'});}
 let st='sampling',acq=false,cont=false;
 if(vc>=2){st='communication';if(Math.random()>0.4){st='acquired';acq=true;if(Math.random()>0.3)cont=true;}}
-samples.push({id:sid++,campaign:'4week',name:`${ln}様`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:st,acquired:acq,acquiredDate:acq?new Date(Date.now()-Math.random()*14*86400000).toISOString():null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:false,week2Date:null,week2Memo:'',visitHistory:vh,createdAt:new Date(Date.now()-28*86400000+Math.random()*7*86400000).toISOString()});
+samples.push({id:sid++,campaign:'4week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:st,acquired:acq,acquiredDate:acq?new Date(Date.now()-Math.random()*14*86400000).toISOString():null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:false,week2Date:null,week2Memo:'',visitHistory:vh,createdAt:new Date(Date.now()-28*86400000+Math.random()*7*86400000).toISOString()});
 }
 for(let i=0;i<50;i++){
 const ln=ri(LN);const w2=Math.random()>0.3;const cont=w2&&Math.random()>0.5;
-samples.push({id:sid++,campaign:'2week',name:`${ln}様`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:'sampling',acquired:false,acquiredDate:null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:w2,week2Date:w2?`${rd(7)} ${rt()}`:null,week2Memo:w2?ri(MW):'',visitHistory:[{date:`${rd(14)} ${rt()}`,memo:'2週間無料CPでお試し開始。'}],createdAt:new Date(Date.now()-14*86400000+Math.random()*7*86400000).toISOString()});
+samples.push({id:sid++,campaign:'2week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:'sampling',acquired:false,acquiredDate:null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:w2,week2Date:w2?`${rd(7)} ${rt()}`:null,week2Memo:w2?ri(MW):'',visitHistory:[{date:`${rd(14)} ${rt()}`,memo:'2週間無料CPでお試し開始。'}],createdAt:new Date(Date.now()-14*86400000+Math.random()*7*86400000).toISOString()});
 }
 data.push(...samples);idCnt=Math.max(...data.map(c=>c.id))+1;save();toast('見本データ140件を追加しました');render();
 }
@@ -579,11 +595,11 @@ const ln=ri(LN);const vc=1+Math.floor(Math.random()*4);const vh=[];
 for(let v=0;v<vc;v++){const da=28-(v*7)+Math.floor(Math.random()*5);vh.push({date:`${rd(da)} ${rt()}`,memo:v===0?ri(M1):v===1?ri(M2):v>=2?ri(M3):'フォロー訪問。'});}
 let st='sampling',acq=false,cont=false;
 if(vc>=2){st='communication';if(Math.random()>0.4){st='acquired';acq=true;if(Math.random()>0.3)cont=true;}}
-samples.push({id:id++,campaign:'4week',name:`${ln}様`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:st,acquired:acq,acquiredDate:acq?new Date(Date.now()-Math.random()*14*86400000).toISOString():null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:false,week2Date:null,week2Memo:'',visitHistory:vh,createdAt:new Date(Date.now()-28*86400000+Math.random()*7*86400000).toISOString()});
+samples.push({id:id++,campaign:'4week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:st,acquired:acq,acquiredDate:acq?new Date(Date.now()-Math.random()*14*86400000).toISOString():null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:false,week2Date:null,week2Memo:'',visitHistory:vh,createdAt:new Date(Date.now()-28*86400000+Math.random()*7*86400000).toISOString()});
 }
 for(let i=0;i<50;i++){
 const ln=ri(LN);const w2=Math.random()>0.3;const cont=w2&&Math.random()>0.5;
-samples.push({id:id++,campaign:'2week',name:`${ln}様`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:'sampling',acquired:false,acquiredDate:null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:w2,week2Date:w2?`${rd(7)} ${rt()}`:null,week2Memo:w2?ri(MW):'',visitHistory:[{date:`${rd(14)} ${rt()}`,memo:'2週間無料CPでお試し開始。'}],createdAt:new Date(Date.now()-14*86400000+Math.random()*7*86400000).toISOString()});
+samples.push({id:id++,campaign:'2week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:'sampling',acquired:false,acquiredDate:null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:w2,week2Date:w2?`${rd(7)} ${rt()}`:null,week2Memo:w2?ri(MW):'',visitHistory:[{date:`${rd(14)} ${rt()}`,memo:'2週間無料CPでお試し開始。'}],createdAt:new Date(Date.now()-14*86400000+Math.random()*7*86400000).toISOString()});
 }
 data=samples;idCnt=id;save();localStorage.setItem('initialized','1');
 }
