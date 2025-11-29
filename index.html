@@ -81,6 +81,27 @@
             </div>
         </div>
     </div>
+    <div id="week2-edit-modal" class="fixed inset-0 z-40 hidden">
+        <div class="overlay absolute inset-0" onclick="closeWeek2EditModal()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10">
+                <h3 class="text-lg font-bold text-purple-700 mb-4">📦 2週目お届けを編集</h3>
+                <div class="space-y-4">
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">お届け日</label>
+                        <input type="date" id="w2ed-date" class="w-full border rounded-lg px-3 py-2" oninput="w2EditDirty=true"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
+                        <select id="w2ed-time" class="w-full border rounded-lg px-3 py-2" onchange="w2EditDirty=true"></select></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
+                        <textarea id="w2ed-memo" rows="3" class="w-full border rounded-lg px-3 py-2" oninput="w2EditDirty=true"></textarea></div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closeWeek2EditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
+                    <button onclick="saveWeek2Edit()" class="flex-1 py-3 bg-purple-500 text-white rounded-lg font-medium">保存</button>
+                </div>
+                <button onclick="deleteWeek2FromModal()" class="w-full mt-3 py-2 text-red-500 text-sm">🗑️ 2週目お届けを削除</button>
+            </div>
+        </div>
+    </div>
     <header class="bg-gradient-to-r from-amber-400 to-yellow-400 shadow-md sticky top-0 z-30">
         <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -265,6 +286,16 @@
                             <span class="text-purple-700 font-medium">📦 2週目お届けとして記録</span>
                         </label>
                     </div>
+                    <div id="week2-done" class="hidden">
+                        <div class="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="text-purple-700 font-bold">📦 2週目お届け済み</div>
+                                <button onclick="editWeek2()" class="text-blue-500 text-sm px-2 py-1 rounded hover:bg-blue-50">編集</button>
+                            </div>
+                            <div class="text-purple-600 text-sm" id="w2-done-date"></div>
+                            <div class="text-purple-600 text-sm mt-1" id="w2-done-memo"></div>
+                        </div>
+                    </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
                         <div class="flex items-center gap-2">
                             <button onclick="chgDate('d-vdate',-1)" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
@@ -379,7 +410,7 @@ function loadGoals(){document.getElementById('goal-4week').value=goals.g4;docume
 
 function saveGoals(){let g4=parseInt(document.getElementById('goal-4week').value)||80;let g2=parseInt(document.getElementById('goal-2week').value)||50;if(g4<1)g4=1;if(g2<1)g2=1;document.getElementById('goal-4week').value=g4;document.getElementById('goal-2week').value=g2;goals.g4=g4;goals.g2=g2;localStorage.setItem('goals',JSON.stringify(goals));updProg();toast('目標を保存しました');}
 
-function initTimes(){const o=[];for(let h=9;h<=19;h++){o.push(`${String(h).padStart(2,'0')}:00`);if(h<19)o.push(`${String(h).padStart(2,'0')}:30`);}['r-time','d-vtime','ed-time'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o.map(t=>`<option value="${t}">${t}</option>`).join('');});}
+function initTimes(){const o=[];for(let h=9;h<=19;h++){o.push(`${String(h).padStart(2,'0')}:00`);if(h<19)o.push(`${String(h).padStart(2,'0')}:30`);}['r-time','d-vtime','ed-time','w2ed-time'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o.map(t=>`<option value="${t}">${t}</option>`).join('');});}
 
 function setToday(){const t=new Date().toISOString().split('T')[0];['r-date','d-vdate'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});}
 
@@ -437,7 +468,7 @@ function updStatBadge(s){const b=document.getElementById('d-stat-badge');const m
 let prevCamp='';
 function confirmCampChange(el,newCamp){const c=data.find(x=>x.id===curId);if(!c)return;if(c.campaign===newCamp){updCampUI();return;}const fromName=c.campaign==='4week'?'4週間体感':'2週間無料';const toName=newCamp==='4week'?'4週間体感':'2週間無料';showCf('キャンペーン変更',`「${fromName}」から「${toName}」に変更しますか？\n\n※通常、キャンペーンの変更は行いません。\n誤登録の修正のみ行ってください。`,r=>{if(r){detDirty=true;updCampUI();}else{document.querySelector(`input[name="d-camp"][value="${c.campaign}"]`).checked=true;}},'⚠️','変更する','bg-red-500');}
 
-function updCampUI(){const c=data.find(x=>x.id===curId);if(!c)return;const camp=document.querySelector('input[name="d-camp"]:checked').value;const is2week=camp==='2week';const w2opt=document.getElementById('week2-option');if(w2opt){if(is2week&&!c.week2Delivered){w2opt.classList.remove('hidden');}else{w2opt.classList.add('hidden');document.getElementById('d-is-week2').checked=false;}}document.getElementById('acq-section').classList.toggle('hidden',is2week);document.getElementById('cont2-section').classList.toggle('hidden',!is2week);if(is2week)updCont2UI(c);}
+function updCampUI(){const c=data.find(x=>x.id===curId);if(!c)return;const camp=document.querySelector('input[name="d-camp"]:checked').value;const is2week=camp==='2week';const w2opt=document.getElementById('week2-option');const w2done=document.getElementById('week2-done');if(w2opt&&w2done){if(is2week){if(c.week2Delivered){w2opt.classList.add('hidden');w2done.classList.remove('hidden');document.getElementById('w2-done-date').textContent='お届け日: '+fmtDT(c.week2Date||'');document.getElementById('w2-done-memo').textContent=c.week2Memo?'メモ: '+c.week2Memo:'';}else{w2opt.classList.remove('hidden');w2done.classList.add('hidden');}}else{w2opt.classList.add('hidden');w2done.classList.add('hidden');}document.getElementById('d-is-week2').checked=false;}document.getElementById('acq-section').classList.toggle('hidden',is2week);document.getElementById('cont2-section').classList.toggle('hidden',!is2week);if(is2week)updCont2UI(c);}
 
 function updAcqUI(c){if(c.acquired){document.getElementById('acq-no').classList.add('hidden');document.getElementById('acq-yes').classList.remove('hidden');document.getElementById('acq-date').textContent=c.acquiredDate?'申込日: '+fmtDate(c.acquiredDate):'';}else{document.getElementById('acq-no').classList.remove('hidden');document.getElementById('acq-yes').classList.add('hidden');}}
 
@@ -457,9 +488,18 @@ function markCont2(){const c=data.find(x=>x.id===curId);if(!c)return;c.continued
 
 function cancelCont2(){showCf('確認','継続を取り消しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=false;c.continuedDate=null;save();updCont2UI(c);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
 
-function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-500 text-center py-4">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);const isW2=v.isWeek2;return`<div class="border rounded-lg p-3${isW2?' bg-purple-50 border-purple-200':''}"><div class="flex justify-between items-start mb-1"><span class="font-medium text-gray-800 text-sm">${fmtDT(v.date)}</span><div class="flex gap-1">${isW2?'':'<button onclick="event.stopPropagation();editV('+i+')" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>'}<button onclick="event.stopPropagation();${isW2?'cfDelW2('+i+')':'cfDelV('+i+')'}" class="text-red-500 text-sm px-3 py-2 rounded hover:bg-red-50">削除</button></div></div><p class="text-gray-600 text-sm whitespace-pre-wrap">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
+function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-500 text-center py-4">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);const isW2=v.isWeek2;return`<div class="border rounded-lg p-3${isW2?' bg-purple-50 border-purple-200':''}"><div class="flex justify-between items-start mb-1"><span class="font-medium text-gray-800 text-sm">${fmtDT(v.date)}</span><div class="flex gap-1">${isW2?'<button onclick="event.stopPropagation();editWeek2()" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>':'<button onclick="event.stopPropagation();editV('+i+')" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>'}<button onclick="event.stopPropagation();${isW2?'cfDelW2('+i+')':'cfDelV('+i+')'}" class="text-red-500 text-sm px-3 py-2 rounded hover:bg-red-50">削除</button></div></div><p class="text-gray-600 text-sm whitespace-pre-wrap">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
 
 function cfDelW2(i){showCf('確認','2週目お届け記録を削除しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';c.visitHistory.splice(i,1);save();renderVisits(c);updCampUI();toast('2週目お届けを削除しました');}},'🗑️','削除','bg-red-500');}
+
+let w2EditDirty=false;
+function editWeek2(){const c=data.find(x=>x.id===curId);if(!c||!c.week2Delivered)return;const d=new Date(c.week2Date);document.getElementById('w2ed-date').value=d.toISOString().split('T')[0];document.getElementById('w2ed-time').value=`${String(d.getHours()).padStart(2,'0')}:${d.getMinutes()<30?'00':'30'}`;document.getElementById('w2ed-memo').value=c.week2Memo||'';w2EditDirty=false;document.getElementById('week2-edit-modal').classList.remove('hidden');}
+
+function closeWeek2EditModal(){if(w2EditDirty){showCf('確認','編集内容を破棄しますか？',r=>{if(r){document.getElementById('week2-edit-modal').classList.add('hidden');w2EditDirty=false;}},'⚠️','破棄','bg-red-500');}else{document.getElementById('week2-edit-modal').classList.add('hidden');}}
+
+function saveWeek2Edit(){const c=data.find(x=>x.id===curId);if(!c)return;const newDate=document.getElementById('w2ed-date').value+' '+document.getElementById('w2ed-time').value;const newMemo=document.getElementById('w2ed-memo').value.trim();c.week2Date=newDate;c.week2Memo=newMemo;const w2Visit=c.visitHistory.find(v=>v.isWeek2);if(w2Visit){w2Visit.date=newDate;w2Visit.memo='📦2週目お届け'+(newMemo?' - '+newMemo:'');}save();updCampUI();renderVisits(c);w2EditDirty=false;document.getElementById('week2-edit-modal').classList.add('hidden');toast('2週目お届けを更新しました');}
+
+function deleteWeek2FromModal(){showCf('確認','2週目お届け記録を削除しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';c.visitHistory=c.visitHistory.filter(v=>!v.isWeek2);save();renderVisits(c);updCampUI();w2EditDirty=false;document.getElementById('week2-edit-modal').classList.add('hidden');toast('2週目お届けを削除しました');}},'🗑️','削除','bg-red-500');}
 
 function fmtDT(s){const d=new Date(s);if(isNaN(d))return s;return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 
@@ -506,7 +546,7 @@ document.getElementById('p2-acq-bar').style.width=Math.min(acq2/goals.g2*100,100
 document.getElementById('p2-acq-bar').className='prog-fill '+(acq2>=goals.g2?'bg-green-500':'bg-purple-500');
 document.getElementById('p2-w2-bar').style.width=acq2?w2/acq2*100+'%':'0%';
 document.getElementById('p2-cont-bar').style.width=acq2?cont2/acq2*100+'%':'0%';
-document.getElementById('p-all').textContent=data.length;document.getElementById('p-all-acq').textContent=data.filter(c=>c.acquired).length;}
+document.getElementById('p-all').textContent=data.length;document.getElementById('p-all-acq').textContent=data.filter(c=>c.acquired||c.campaign==='2week').length;}
 
 function save(){localStorage.setItem('cdata',JSON.stringify(data));localStorage.setItem('idCnt',idCnt.toString());}
 
