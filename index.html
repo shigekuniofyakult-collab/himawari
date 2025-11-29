@@ -227,6 +227,7 @@
                     </div>
                 </div>
             </div>
+            <div id="filter-display" class="hidden text-center text-xs text-white bg-blue-500 rounded-lg py-2 px-3"></div>
             <div class="text-center text-gray-600 text-sm"><span id="cnt">0</span>件</div>
             <div id="cards" class="space-y-3"></div>
             <div class="bg-white rounded-xl shadow-md p-4 space-y-3">
@@ -244,7 +245,7 @@
         </div>
         <div id="scr-detail" class="hidden space-y-4">
             <button onclick="backToList()" class="flex items-center gap-2 text-amber-600 font-medium">← 顧客一覧に戻る</button>
-            <div class="flex gap-2"><span id="d-camp-badge" class="px-3 py-1 rounded-full text-xs font-medium"></span><span id="d-stat-badge" class="text-xs px-2 py-1 rounded-full"></span></div>
+            <div class="flex gap-2 flex-wrap"><span id="d-camp-badge" class="px-3 py-1 rounded-full text-xs font-medium"></span><span id="d-stat-badge" class="text-xs px-2 py-1 rounded-full"></span><span id="d-cont-badge" class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 hidden">🔄継続</span></div>
             <div class="bg-white rounded-xl shadow-md p-5">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">👤 顧客情報</h2>
                 <div class="space-y-4">
@@ -322,22 +323,53 @@
             </div>
             <div id="acq-section" class="bg-white rounded-xl shadow-md p-5">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">🎯 CP申込ステータス</h2>
-                <div id="acq-no"><p class="text-gray-600 mb-3">まだCP申込されていません</p>
-                    <button onclick="markAcq()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl">🎉 CP申込済みにする</button></div>
+                <div id="acq-no">
+                    <p class="text-gray-600 mb-3">まだCP申込されていません</p>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">申込日</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="chgDate('acq-date-input',-1);updWeekdayDisp('acq-date-input','acq-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">◀</button>
+                            <input type="date" id="acq-date-input" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('acq-date-input','acq-weekday')">
+                            <button onclick="chgDate('acq-date-input',1);updWeekdayDisp('acq-date-input','acq-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">▶</button>
+                            <span id="acq-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                        </div>
+                    </div>
+                    <button onclick="markAcq()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl">🎉 CP申込済みにする</button>
+                </div>
                 <div id="acq-yes" class="hidden">
                     <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
-                        <div class="text-green-700 font-bold mb-1">🎉 CP申込済み</div>
-                        <div class="text-green-600 text-sm" id="acq-date"></div>
+                        <div class="text-green-700 font-bold mb-2">🎉 CP申込済み</div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="chgAcqDate(-1)" class="w-8 h-8 bg-green-100 rounded text-sm">◀</button>
+                            <input type="date" id="acq-date-edit" class="flex-1 border border-green-300 rounded px-2 py-1 text-center text-sm" onchange="saveAcqDate();updWeekdayDisp('acq-date-edit','acq-weekday-edit')">
+                            <button onclick="chgAcqDate(1)" class="w-8 h-8 bg-green-100 rounded text-sm">▶</button>
+                            <span id="acq-weekday-edit" class="text-green-600 font-medium w-8 text-center text-sm"></span>
+                        </div>
                     </div>
                     <button onclick="cancelAcq()" class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-sm mb-3">CP申込を取り消す</button>
                     <div class="border-t pt-3 mt-3">
                         <h3 class="font-medium text-gray-700 mb-2">継続ステータス</h3>
-                        <div id="cont-no"><p class="text-gray-500 text-sm mb-2">まだ継続されていません</p>
-                            <button onclick="markCont()" class="w-full bg-blue-500 text-white font-medium py-2 rounded-lg">🔄 継続済みにする</button></div>
+                        <div id="cont-no">
+                            <p class="text-gray-500 text-sm mb-2">まだ継続されていません</p>
+                            <div class="mb-2">
+                                <div class="flex items-center gap-2">
+                                    <button onclick="chgDate('cont-date-input',-1);updWeekdayDisp('cont-date-input','cont-weekday')" class="w-8 h-8 bg-gray-100 rounded text-sm">◀</button>
+                                    <input type="date" id="cont-date-input" class="flex-1 border rounded px-2 py-1 text-center text-sm" onchange="updWeekdayDisp('cont-date-input','cont-weekday')">
+                                    <button onclick="chgDate('cont-date-input',1);updWeekdayDisp('cont-date-input','cont-weekday')" class="w-8 h-8 bg-gray-100 rounded text-sm">▶</button>
+                                    <span id="cont-weekday" class="text-gray-600 font-medium w-8 text-center text-sm"></span>
+                                </div>
+                            </div>
+                            <button onclick="markCont()" class="w-full bg-blue-500 text-white font-medium py-2 rounded-lg">🔄 継続済みにする</button>
+                        </div>
                         <div id="cont-yes" class="hidden">
                             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-                                <div class="text-blue-700 font-bold text-sm">🔄 継続済み</div>
-                                <div class="text-blue-600 text-xs" id="cont-date"></div>
+                                <div class="text-blue-700 font-bold text-sm mb-1">🔄 継続済み</div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="chgContDate(-1)" class="w-8 h-8 bg-blue-100 rounded text-sm">◀</button>
+                                    <input type="date" id="cont-date-edit" class="flex-1 border border-blue-300 rounded px-2 py-1 text-center text-sm" onchange="saveContDate();updWeekdayDisp('cont-date-edit','cont-weekday-edit')">
+                                    <button onclick="chgContDate(1)" class="w-8 h-8 bg-blue-100 rounded text-sm">▶</button>
+                                    <span id="cont-weekday-edit" class="text-blue-600 font-medium w-8 text-center text-sm"></span>
+                                </div>
                             </div>
                             <button onclick="cancelCont()" class="w-full bg-gray-200 text-gray-600 py-1 rounded-lg text-xs">継続を取り消す</button>
                         </div>
@@ -346,12 +378,28 @@
             </div>
             <div id="cont2-section" class="bg-white rounded-xl shadow-md p-5 hidden">
                 <h2 class="text-lg font-bold text-gray-800 mb-4">🔄 継続ステータス</h2>
-                <div id="cont2-no"><p class="text-gray-600 mb-3">まだ継続されていません</p>
-                    <button onclick="markCont2()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl">🔄 継続済みにする</button></div>
+                <div id="cont2-no">
+                    <p class="text-gray-600 mb-3">まだ継続されていません</p>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">継続日</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="chgDate('cont2-date-input',-1);updWeekdayDisp('cont2-date-input','cont2-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">◀</button>
+                            <input type="date" id="cont2-date-input" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('cont2-date-input','cont2-weekday')">
+                            <button onclick="chgDate('cont2-date-input',1);updWeekdayDisp('cont2-date-input','cont2-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">▶</button>
+                            <span id="cont2-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                        </div>
+                    </div>
+                    <button onclick="markCont2()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl">🔄 継続済みにする</button>
+                </div>
                 <div id="cont2-yes" class="hidden">
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
-                        <div class="text-blue-700 font-bold mb-1">🔄 継続済み</div>
-                        <div class="text-blue-600 text-sm" id="cont2-date"></div>
+                        <div class="text-blue-700 font-bold mb-2">🔄 継続済み</div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="chgCont2Date(-1)" class="w-8 h-8 bg-blue-100 rounded text-sm">◀</button>
+                            <input type="date" id="cont2-date-edit" class="flex-1 border border-blue-300 rounded px-2 py-1 text-center text-sm" onchange="saveCont2Date();updWeekdayDisp('cont2-date-edit','cont2-weekday-edit')">
+                            <button onclick="chgCont2Date(1)" class="w-8 h-8 bg-blue-100 rounded text-sm">▶</button>
+                            <span id="cont2-weekday-edit" class="text-blue-600 font-medium w-8 text-center text-sm"></span>
+                        </div>
                     </div>
                     <button onclick="cancelCont2()" class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-sm">継続を取り消す</button>
                 </div>
@@ -422,7 +470,7 @@ function saveGoals(){let g4=parseInt(document.getElementById('goal-4week').value
 
 function initTimes(){const o=[];for(let h=9;h<=19;h++){o.push(`${String(h).padStart(2,'0')}:00`);if(h<19)o.push(`${String(h).padStart(2,'0')}:30`);}['r-time','d-vtime','ed-time','w2ed-time'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o.map(t=>`<option value="${t}">${t}</option>`).join('');});}
 
-function setToday(){const t=new Date().toISOString().split('T')[0];['r-date','d-vdate'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});}
+function setToday(){const t=new Date().toISOString().split('T')[0];['r-date','d-vdate','acq-date-input','cont-date-input','cont2-date-input'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});updWeekdayDisp('acq-date-input','acq-weekday');updWeekdayDisp('cont-date-input','cont-weekday');updWeekdayDisp('cont2-date-input','cont2-weekday');}
 
 function chgDate(id,d){const e=document.getElementById(id),dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];}
 
@@ -450,9 +498,9 @@ function regCustomer(){if(processing)return;const nameVal=document.getElementByI
 
 function clrForm(){document.getElementById('r-name').value='';document.getElementById('r-kana').value='';document.getElementById('r-addr').value='';document.getElementById('r-memo').value='';document.querySelectorAll('#r-contact input,#r-needs input').forEach(x=>x.checked=false);document.querySelector('input[name="r-camp"][value="4week"]').checked=true;setToday();updChkStyle('r-contact');updChkStyle('r-needs');}
 
-function render(){updSum();const q=document.getElementById('search').value.toLowerCase();document.getElementById('search-clr').classList.toggle('hidden',!q);let f=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat){const[fc,fs]=fStat.split('-');const campMatch=fc==='4'?c.campaign==='4week':c.campaign==='2week';if(!campMatch||c.status!==fs)return false;}if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});document.getElementById('cnt').textContent=f.length;const cont=document.getElementById('cards');if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg">新規登録</button></div>';return;}if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl">該当なし</div>';return;}cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign);const ab=c.acquired?'<span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-600">🎉CP申込</span>':'';const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px]">${esc(c.name)||'(未入力)'}</h3>${sb}${ab}${cb}</div>${db}</div><div class="text-sm text-gray-600">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');}
+function render(){updSum();const q=document.getElementById('search').value.toLowerCase();document.getElementById('search-clr').classList.toggle('hidden',!q);let f=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat){const[fc,fs]=fStat.split('-');const campMatch=fc==='4'?c.campaign==='4week':c.campaign==='2week';if(!campMatch||c.status!==fs)return false;}if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});document.getElementById('cnt').textContent=f.length;const cont=document.getElementById('cards');if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg">新規登録</button></div>';return;}if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl">該当なし</div>';return;}cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px]">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');}
 
-function statBadge(s,camp){if(camp==='2week'){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp2">1週間分お届け済</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm2">2週間分お届け済</span>'};return m[s]||'';}const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm">コミュニケーション</span>',acquired:'<span class="text-xs px-2 py-1 rounded-full st-acq">CP申込</span>'};return m[s]||'';}
+function statBadge(s,camp,acq){if(camp==='2week'){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp2">1週間分お届け済</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm2">2週間分お届け済</span>'};return m[s]||'';}if(acq)return'<span class="text-xs px-2 py-1 rounded-full st-acq">🎉CP申込</span>';const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm">コミュニケーション</span>'};return m[s]||'';}
 
 function matchKana(t,f){if(!t)return f==='他';const c=t.charAt(0);const r={あ:/^[あいうえおアイウエオ]/,か:/^[かきくけこがぎぐげごカキクケコガギグゲゴ]/,さ:/^[さしすせそざじずぜぞサシスセソザジズゼゾ]/,た:/^[たちつてとだぢづでどタチツテトダヂヅデド]/,な:/^[なにぬねのナニヌネノ]/,は:/^[はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポ]/,ま:/^[まみむめもマミムメモ]/,や:/^[やゆよヤユヨ]/,ら:/^[らりるれろラリルレロ]/,わ:/^[わをんワヲン]/};if(f==='他'){for(const x of Object.values(r))if(x.test(c))return false;return true;}return r[f]&&r[f].test(c);}
 
@@ -460,15 +508,16 @@ function daysSince(c){if(!c.visitHistory||c.visitHistory.length===0)return-1;con
 
 function updSum(){document.getElementById('sum-total').textContent=data.length;}
 
-function setKana(k){fKana=k;document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if((k===''&&b.textContent==='全て')||b.textContent===k)b.classList.add('on');});updFilterClear();render();}
+function setKana(k){fKana=k;document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if((k===''&&b.textContent==='全て')||b.textContent===k)b.classList.add('on');});updFilterClear();updFilterDisplay();render();}
 
 function toggleCampF(){const s=document.getElementById('sub-camp');const isHidden=s.classList.contains('hidden');document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');if(isHidden)s.classList.remove('hidden');}
 function toggleStatF(){const s=document.getElementById('sub-stat');const isHidden=s.classList.contains('hidden');document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');if(isHidden)s.classList.remove('hidden');}
-function toggleFollowF(){fFollow=!fFollow;const b=document.getElementById('f-follow');b.classList.toggle('bg-red-500',fFollow);b.classList.toggle('text-white',fFollow);b.classList.toggle('bg-gray-100',!fFollow);b.classList.toggle('text-gray-600',!fFollow);updFilterClear();render();}
-function setCampF(v){fCamp=v;document.querySelectorAll('#sub-camp button').forEach(b=>{b.classList.remove('bg-amber-500','bg-purple-500','bg-gray-500','text-white');if((v===''&&b.textContent==='全て')){b.classList.add('bg-gray-500','text-white');}else if((v==='4week'&&b.textContent==='4週間')){b.classList.add('bg-amber-500','text-white');}else if((v==='2week'&&b.textContent==='2週間')){b.classList.add('bg-purple-500','text-white');}});const pb=document.getElementById('f-camp');if(v){pb.classList.add('bg-amber-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-amber-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}updFilterClear();render();}
-function setStatF(v){fStat=v;document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('bg-blue-500','bg-amber-500','bg-green-500','bg-purple-500','text-white');});const pb=document.getElementById('f-stat');if(v){pb.classList.add('bg-blue-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-blue-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}updFilterClear();render();}
+function toggleFollowF(){fFollow=!fFollow;const b=document.getElementById('f-follow');b.classList.toggle('bg-red-500',fFollow);b.classList.toggle('text-white',fFollow);b.classList.toggle('bg-gray-100',!fFollow);b.classList.toggle('text-gray-600',!fFollow);updFilterClear();updFilterDisplay();render();}
+function setCampF(v){fCamp=v;document.querySelectorAll('#sub-camp button').forEach(b=>{b.classList.remove('bg-amber-500','bg-purple-500','bg-gray-500','text-white');if((v===''&&b.textContent==='全て')){b.classList.add('bg-gray-500','text-white');}else if((v==='4week'&&b.textContent==='4週間')){b.classList.add('bg-amber-500','text-white');}else if((v==='2week'&&b.textContent==='2週間')){b.classList.add('bg-purple-500','text-white');}});const pb=document.getElementById('f-camp');if(v){pb.classList.add('bg-amber-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-amber-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}updFilterClear();updFilterDisplay();render();}
+function setStatF(v){fStat=v;document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('ring-2','ring-offset-1','ring-blue-500','ring-purple-500','ring-green-500','ring-amber-500','font-bold');});if(v){const[fc,fs]=v.split('-');const btnMap={'4-sampling':'サンプリング','4-communication':'コミュニケーション','4-acquired':'CP申込','2-sampling':'1週間分お届け済','2-communication':'2週間分お届け済'};const targetText=btnMap[v];document.querySelectorAll('#sub-stat button').forEach(b=>{if(b.textContent===targetText){const ringColor=fc==='4'?(fs==='sampling'?'ring-blue-500':fs==='communication'?'ring-amber-500':'ring-green-500'):'ring-purple-500';b.classList.add('ring-2','ring-offset-1',ringColor,'font-bold');}});}const pb=document.getElementById('f-stat');if(v){pb.classList.add('bg-blue-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-blue-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}updFilterClear();updFilterDisplay();render();}
 function updFilterClear(){const hasFilter=fCamp||fStat||fFollow||fKana;document.getElementById('f-clear').classList.toggle('hidden',!hasFilter);}
-function clearAllFilters(){fCamp='';fStat='';fFollow=false;fKana='';['f-camp','f-stat','f-follow'].forEach(id=>{const b=document.getElementById(id);b.classList.remove('bg-amber-500','bg-blue-500','bg-red-500','text-white');b.classList.add('bg-gray-100','text-gray-600');});document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if(b.textContent==='全て')b.classList.add('on');});document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');updFilterClear();render();}
+function updFilterDisplay(){const parts=[];if(fCamp)parts.push(fCamp==='4week'?'4週間体感':'2週間無料');if(fStat){const m={'4-sampling':'サンプリング','4-communication':'コミュニケーション','4-acquired':'CP申込','2-sampling':'1週間分お届け済','2-communication':'2週間分お届け済'};parts.push(m[fStat]||'');}if(fFollow)parts.push('要フォロー');if(fKana)parts.push(`よみがな:${fKana}`);const el=document.getElementById('filter-display');if(parts.length>0){el.textContent='🔍 '+parts.join(' / ');el.classList.remove('hidden');}else{el.classList.add('hidden');}}
+function clearAllFilters(){fCamp='';fStat='';fFollow=false;fKana='';['f-camp','f-stat','f-follow'].forEach(id=>{const b=document.getElementById(id);b.classList.remove('bg-amber-500','bg-blue-500','bg-red-500','text-white');b.classList.add('bg-gray-100','text-gray-600');});document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if(b.textContent==='全て')b.classList.add('on');});document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('ring-2','ring-offset-1','ring-blue-500','ring-purple-500','ring-green-500','ring-amber-500','font-bold');});document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');updFilterClear();updFilterDisplay();render();}
 function clrSearch(){document.getElementById('search').value='';render();}
 
 function showDet(id){curId=id;const c=data.find(x=>x.id===id);if(!c)return;const cb=document.getElementById('d-camp-badge');cb.textContent=c.campaign==='4week'?'4週間体感':'2週間無料';cb.className='px-3 py-1 rounded-full text-xs font-medium '+(c.campaign==='4week'?'bg-amber-100 text-amber-700':'bg-purple-100 text-purple-700');updStatBadge(c.status,c.campaign);document.querySelector(`input[name="d-camp"][value="${c.campaign}"]`).checked=true;document.getElementById('d-name').value=c.name||'';document.getElementById('d-kana').value=c.kana||'';document.getElementById('d-addr').value=c.address||'';setChk('d-contact',c.contact);setChk('d-needs',c.needs);updAcqUI(c);updContUI(c);updCampUI();renderVisits(c);setToday();initTimes();document.getElementById('d-vmemo').value='';detDirty=false;showScreen('detail');}
@@ -480,23 +529,35 @@ function confirmCampChange(el,newCamp){const c=data.find(x=>x.id===curId);if(!c)
 
 function updCampUI(){const c=data.find(x=>x.id===curId);if(!c)return;const camp=document.querySelector('input[name="d-camp"]:checked').value;const is2week=camp==='2week';updStatBadge(c.status,camp);const w2opt=document.getElementById('week2-option');const w2done=document.getElementById('week2-done');if(w2opt&&w2done){if(is2week){if(c.week2Delivered){w2opt.classList.add('hidden');w2done.classList.remove('hidden');document.getElementById('w2-done-date').textContent='お届け日: '+fmtDT(c.week2Date||'');document.getElementById('w2-done-memo').textContent=c.week2Memo?'メモ: '+c.week2Memo:'';}else{w2opt.classList.remove('hidden');w2done.classList.add('hidden');}}else{w2opt.classList.add('hidden');w2done.classList.add('hidden');}document.getElementById('d-is-week2').checked=false;}document.getElementById('acq-section').classList.toggle('hidden',is2week);document.getElementById('cont2-section').classList.toggle('hidden',!is2week);if(is2week)updCont2UI(c);}
 
-function updAcqUI(c){if(c.acquired){document.getElementById('acq-no').classList.add('hidden');document.getElementById('acq-yes').classList.remove('hidden');document.getElementById('acq-date').textContent=c.acquiredDate?'申込日: '+fmtDate(c.acquiredDate):'';}else{document.getElementById('acq-no').classList.remove('hidden');document.getElementById('acq-yes').classList.add('hidden');}}
+function updAcqUI(c){if(c.acquired){document.getElementById('acq-no').classList.add('hidden');document.getElementById('acq-yes').classList.remove('hidden');const dateEdit=document.getElementById('acq-date-edit');if(dateEdit&&c.acquiredDate){dateEdit.value=new Date(c.acquiredDate).toISOString().split('T')[0];updWeekdayDisp('acq-date-edit','acq-weekday-edit');}}else{document.getElementById('acq-no').classList.remove('hidden');document.getElementById('acq-yes').classList.add('hidden');}}
 
-function updContUI(c){if(c.continued){document.getElementById('cont-no').classList.add('hidden');document.getElementById('cont-yes').classList.remove('hidden');document.getElementById('cont-date').textContent=c.continuedDate?'継続日: '+fmtDate(c.continuedDate):'';}else{document.getElementById('cont-no').classList.remove('hidden');document.getElementById('cont-yes').classList.add('hidden');}}
+function updContUI(c){const contBadge=document.getElementById('d-cont-badge');if(c.continued){document.getElementById('cont-no').classList.add('hidden');document.getElementById('cont-yes').classList.remove('hidden');const dateEdit=document.getElementById('cont-date-edit');if(dateEdit&&c.continuedDate){dateEdit.value=new Date(c.continuedDate).toISOString().split('T')[0];updWeekdayDisp('cont-date-edit','cont-weekday-edit');}if(contBadge)contBadge.classList.remove('hidden');}else{document.getElementById('cont-no').classList.remove('hidden');document.getElementById('cont-yes').classList.add('hidden');if(contBadge)contBadge.classList.add('hidden');}}
 
-function markAcq(){const c=data.find(x=>x.id===curId);if(!c)return;c.acquired=true;c.acquiredDate=new Date().toISOString();c.status='acquired';save();updAcqUI(c);updStatBadge('acquired');toast('🎉CP申込済みにしました');}
+function markAcq(){const c=data.find(x=>x.id===curId);if(!c)return;const dateInput=document.getElementById('acq-date-input');const selectedDate=dateInput?dateInput.value:new Date().toISOString().split('T')[0];c.acquired=true;c.acquiredDate=new Date(selectedDate+'T12:00:00').toISOString();c.status='acquired';save();updAcqUI(c);updStatBadge('acquired',c.campaign);toast('🎉CP申込済みにしました');}
 
-function cancelAcq(){showCf('確認','CP申込を取り消しますか？\n継続ステータスも取り消されます。',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.acquired=false;c.acquiredDate=null;c.continued=false;c.continuedDate=null;c.status=c.visitHistory.length>1?'communication':'sampling';save();updAcqUI(c);updContUI(c);updStatBadge(c.status);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
+function cancelAcq(){showCf('確認','CP申込を取り消しますか？\n継続ステータスも取り消されます。',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.acquired=false;c.acquiredDate=null;c.continued=false;c.continuedDate=null;c.status=c.visitHistory.length>1?'communication':'sampling';save();updAcqUI(c);updContUI(c);updStatBadge(c.status,c.campaign);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
 
-function markCont(){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=true;c.continuedDate=new Date().toISOString();save();updContUI(c);toast('🔄継続済みにしました');}
+function markCont(){const c=data.find(x=>x.id===curId);if(!c)return;const dateInput=document.getElementById('cont-date-input');const selectedDate=dateInput?dateInput.value:new Date().toISOString().split('T')[0];c.continued=true;c.continuedDate=new Date(selectedDate+'T12:00:00').toISOString();save();updContUI(c);toast('🔄継続済みにしました');}
 
 function cancelCont(){showCf('確認','継続を取り消しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=false;c.continuedDate=null;save();updContUI(c);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
 
-function updCont2UI(c){if(c.continued){document.getElementById('cont2-no').classList.add('hidden');document.getElementById('cont2-yes').classList.remove('hidden');document.getElementById('cont2-date').textContent=c.continuedDate?'継続日: '+fmtDate(c.continuedDate):'';}else{document.getElementById('cont2-no').classList.remove('hidden');document.getElementById('cont2-yes').classList.add('hidden');}}
+function updCont2UI(c){const contBadge=document.getElementById('d-cont-badge');if(c.continued){document.getElementById('cont2-no').classList.add('hidden');document.getElementById('cont2-yes').classList.remove('hidden');const dateEdit=document.getElementById('cont2-date-edit');if(dateEdit&&c.continuedDate){dateEdit.value=new Date(c.continuedDate).toISOString().split('T')[0];updWeekdayDisp('cont2-date-edit','cont2-weekday-edit');}if(contBadge)contBadge.classList.remove('hidden');}else{document.getElementById('cont2-no').classList.remove('hidden');document.getElementById('cont2-yes').classList.add('hidden');if(contBadge)contBadge.classList.add('hidden');}}
 
-function markCont2(){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=true;c.continuedDate=new Date().toISOString();save();updCont2UI(c);toast('🔄継続済みにしました');}
+function markCont2(){const c=data.find(x=>x.id===curId);if(!c)return;const dateInput=document.getElementById('cont2-date-input');const selectedDate=dateInput?dateInput.value:new Date().toISOString().split('T')[0];c.continued=true;c.continuedDate=new Date(selectedDate+'T12:00:00').toISOString();save();updCont2UI(c);toast('🔄継続済みにしました');}
 
 function cancelCont2(){showCf('確認','継続を取り消しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.continued=false;c.continuedDate=null;save();updCont2UI(c);toast('取り消しました');}},'⚠️','取り消す','bg-red-500');}
+
+function chgAcqDate(d){const e=document.getElementById('acq-date-edit');if(!e)return;const dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];updWeekdayDisp('acq-date-edit','acq-weekday-edit');saveAcqDate();}
+
+function saveAcqDate(){const c=data.find(x=>x.id===curId);if(!c)return;const e=document.getElementById('acq-date-edit');if(e)c.acquiredDate=new Date(e.value+'T12:00:00').toISOString();save();toast('申込日を更新しました');}
+
+function chgContDate(d){const e=document.getElementById('cont-date-edit');if(!e)return;const dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];updWeekdayDisp('cont-date-edit','cont-weekday-edit');saveContDate();}
+
+function saveContDate(){const c=data.find(x=>x.id===curId);if(!c)return;const e=document.getElementById('cont-date-edit');if(e)c.continuedDate=new Date(e.value+'T12:00:00').toISOString();save();toast('継続日を更新しました');}
+
+function chgCont2Date(d){const e=document.getElementById('cont2-date-edit');if(!e)return;const dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];updWeekdayDisp('cont2-date-edit','cont2-weekday-edit');saveCont2Date();}
+
+function saveCont2Date(){const c=data.find(x=>x.id===curId);if(!c)return;const e=document.getElementById('cont2-date-edit');if(e)c.continuedDate=new Date(e.value+'T12:00:00').toISOString();save();toast('継続日を更新しました');}
 
 function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-500 text-center py-4">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);const isW2=v.isWeek2;return`<div class="border rounded-lg p-3${isW2?' bg-purple-50 border-purple-200':''}"><div class="flex justify-between items-start mb-1"><span class="font-medium text-gray-800 text-sm">${fmtDT(v.date)}</span><div class="flex gap-1">${isW2?'<button onclick="event.stopPropagation();editWeek2()" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>':'<button onclick="event.stopPropagation();editV('+i+')" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>'}<button onclick="event.stopPropagation();${isW2?'cfDelW2('+i+')':'cfDelV('+i+')'}" class="text-red-500 text-sm px-3 py-2 rounded hover:bg-red-50">削除</button></div></div><p class="text-gray-600 text-sm whitespace-pre-wrap">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
 
@@ -513,7 +574,11 @@ function deleteWeek2FromModal(){showCf('確認','2週目お届け記録を削除
 
 function fmtDT(s){const d=new Date(s);if(isNaN(d))return s;return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 
-function fmtDate(s){const d=new Date(s);if(isNaN(d))return s;return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDate(s){const d=new Date(s);if(isNaN(d))return s;const days=['日','月','火','水','木','金','土'];return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${days[d.getDay()]})`;}
+
+function getWeekday(dateStr){if(!dateStr)return'';const d=new Date(dateStr);if(isNaN(d))return'';const days=['日','月','火','水','木','金','土'];return days[d.getDay()];}
+
+function updWeekdayDisp(inputId,dispId){const input=document.getElementById(inputId);const disp=document.getElementById(dispId);if(input&&disp)disp.textContent=getWeekday(input.value);}
 
 function parseJpDate(s){if(!s)return null;const m=s.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})/);if(m)return new Date(m[1],m[2]-1,m[3]).toISOString();return null;}
 
@@ -529,7 +594,7 @@ function saveEditVisit(){if(editIdx===null)return;const c=data.find(x=>x.id===cu
 
 function cfDelV(i){showCf('確認','この訪問記録を削除しますか？',r=>{if(r)delV(i);},'🗑️','削除','bg-red-500');}
 
-function delV(i){const c=data.find(x=>x.id===curId);if(!c)return;const prevSt=c.status;delVisitBk={cid:curId,idx:i,d:{...c.visitHistory[i]},prevStatus:prevSt};c.visitHistory.splice(i,1);if(c.status==='communication'&&c.visitHistory.length<=1&&!c.acquired){c.status='sampling';updStatBadge(c.status,c.campaign);}save();renderVisits(c);showUndo('訪問記録を削除しました');}
+function delV(i){const c=data.find(x=>x.id===curId);if(!c)return;const prevSt=c.status;delVisitBk={cid:curId,idx:i,d:{...c.visitHistory[i]},prevStatus:prevSt};c.visitHistory.splice(i,1);let statChanged=false;if(c.status==='communication'&&c.visitHistory.length<=1&&!c.acquired){c.status='sampling';statChanged=true;updStatBadge(c.status,c.campaign);}save();renderVisits(c);if(statChanged){const statName=c.campaign==='2week'?'1週間分お届け済':'サンプリング';showUndo(`訪問記録を削除（ステータス→${statName}）`);}else{showUndo('訪問記録を削除しました');}}
 
 function delCust(){const c=data.find(x=>x.id===curId);if(!c)return;showCf('削除確認 (1/2)',`「${c.name||'(未入力)'}」を削除しますか？`,r=>{if(r){showCf('最終確認 (2/2)','本当にこの顧客を削除しますか？\nこの操作は取り消せません。',r2=>{if(r2){delCustBk={...c,visitHistory:[...c.visitHistory]};data=data.filter(x=>x.id!==curId);save();detDirty=false;showScreen('list');showUndo('顧客を削除しました');}},'🚨','完全に削除','bg-red-600');}},'🗑️','次へ','bg-red-500');}
 
