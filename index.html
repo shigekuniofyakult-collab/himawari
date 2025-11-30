@@ -48,13 +48,6 @@
         .chip{background:#E5E7EB;color:#374151;padding:6px 14px;border-radius:20px;font-size:0.9rem;cursor:pointer;user-select:none;transition:background .2s}
         .chip:active{background:#D1D5DB;transform:scale(0.95)}
         
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        
         /* スクロールボタン制御 */
         .scroll-btn {
             transition: opacity 0.3s, transform 0.2s; 
@@ -684,7 +677,7 @@ function render(){
     if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2 font-bold">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-3 rounded-lg font-bold shadow">新規登録</button></div>';document.getElementById('no-hit-msg').classList.add('hidden');return;}
     if(f.length===0){cont.innerHTML='';document.getElementById('no-hit-msg').classList.remove('hidden');return;}
     document.getElementById('no-hit-msg').classList.add('hidden');
-    cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600 font-bold">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600 font-bold">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600 font-bold">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 font-bold">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer border border-gray-100" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px] text-lg">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600 space-y-1">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div><div class="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 line-clamp-2">${c.visitHistory.length>0?esc(c.visitHistory[c.visitHistory.length-1].memo):'メモなし'}</div></div>`;}).join('');
+    cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600 font-bold">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600 font-bold">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600 font-bold">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 font-bold">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer border border-gray-100" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px] text-lg">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600 space-y-1">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');
 }
 
 function statBadge(s,camp,acq){if(camp==='2week'){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp2 font-bold">1週間分お届け済</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm2 font-bold">2週間分お届け済</span>'};return m[s]||'';}if(acq)return'<span class="text-xs px-2 py-1 rounded-full st-acq font-bold">🎉CP申込</span>';const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp font-bold">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm font-bold">コミュニケーション</span>'};return m[s]||'';}
