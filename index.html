@@ -169,8 +169,14 @@
                             <label class="cb-label cursor-pointer"><input type="checkbox" value="アレルギー" class="hidden"><span class="choice inline-block border rounded-lg text-sm">アレルギー</span></label>
                         </div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
-                        <textarea id="r-memo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></textarea></div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
+                        <textarea id="r-memo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></textarea>
+                        <div class="flex gap-2 mt-2 flex-wrap">
+                            <span class="chip" onclick="addMemoTag('r-memo', '興味あり')">興味あり</span>
+                            <span class="chip" onclick="addMemoTag('r-memo', '憩い')">憩い</span>
+                        </div>
+                    </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
                         <div class="flex items-center gap-2">
                             <button onclick="chgDate('r-date',-1);updWeekdayDisp('r-date','r-weekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
@@ -341,10 +347,11 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
                         <textarea id="d-vmemo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3"></textarea>
                         <div class="flex gap-2 mt-2 flex-wrap">
-                            <span class="chip" onclick="addMemoTag('【不在】')">【不在】</span>
-                            <span class="chip" onclick="addMemoTag('資料お渡し')">資料お渡し</span>
-                            <span class="chip" onclick="addMemoTag('玄関先対応')">玄関先対応</span>
-                            <span class="chip" onclick="addMemoTag('次回約束')">次回約束</span>
+                            <span class="chip" onclick="addMemoTag('d-vmemo','【不在】')">【不在】</span>
+                            <span class="chip" onclick="addMemoTag('d-vmemo','興味あり')">興味あり</span>
+                            <span class="chip" onclick="addMemoTag('d-vmemo','憩い')">憩い</span>
+                            <span class="chip" onclick="addMemoTag('d-vmemo','資料お渡し')">資料お渡し</span>
+                            <span class="chip" onclick="addMemoTag('d-vmemo','次回約束')">次回約束</span>
                         </div>
                     </div>
                     
@@ -498,12 +505,10 @@ let curId=null,editIdx=null,formDirty=false,detDirty=false,editDirty=false,proce
 let delCustBk=null,delVisitBk=null,undoTimer=null,cfCb=null;
 let fKana='',fCamp='',fStat='',fFollow=false;
 
-// 初期化（見本自動生成は廃止）
 document.addEventListener('DOMContentLoaded',()=>{
     initTimes();
     setToday();
     loadGoals();
-    // 自動生成ロジックは削除しました
     migrate();
 });
 
@@ -512,7 +517,6 @@ function migrate(){let s=false;data.forEach(c=>{if(!c.campaign){c.campaign='4wee
 function loadGoals(){document.getElementById('goal-4week').value=goals.g4;document.getElementById('goal-2week').value=goals.g2;}
 function saveGoals(){let g4=parseInt(document.getElementById('goal-4week').value)||80;let g2=parseInt(document.getElementById('goal-2week').value)||50;if(g4<1)g4=1;if(g2<1)g2=1;document.getElementById('goal-4week').value=g4;document.getElementById('goal-2week').value=g2;goals.g4=g4;goals.g2=g2;localStorage.setItem('goals',JSON.stringify(goals));updProg();toast('目標を保存しました');}
 
-// 15分刻みに変更
 function initTimes(){
     const o=[];
     for(let h=8;h<=20;h++){
@@ -543,7 +547,6 @@ function regCustomer(){
     if(processing)return;
     const nameVal=document.getElementById('r-name').value.trim();
     if(!nameVal){toast('顧客名を入力してください','⚠️');return;}
-    // ひらがなチェック
     const kanaVal=document.getElementById('r-kana').value.trim();
     if(kanaVal && !/^[ぁ-んァ-ンー]+$/.test(kanaVal)){toast('よみがなは「ひらがな」で入力してください','⚠️');return;}
     
@@ -555,27 +558,29 @@ function regCustomer(){
     setTimeout(()=>{toast('登録しました');clrForm();formDirty=false;btn.classList.remove('disabled');btn.textContent='🌻 登録する';processing=false;},300);
 }
 
-function clrForm(){document.getElementById('r-name').value='';document.getElementById('r-kana').value='';document.getElementById('r-addr').value='';document.getElementById('r-memo').value='';document.querySelectorAll('#r-contact input,#r-needs input').forEach(x=>x.checked=false);document.querySelector('input[name="r-camp"][value="4week"]').checked=true;setToday();updChkStyle('r-contact');updChkStyle('r-needs');}
+function clrForm(){
+    // キャンペーン選択状態を維持するため、現在の選択値を取得
+    const curCamp = document.querySelector('input[name="r-camp"]:checked').value;
+    
+    document.getElementById('r-name').value='';document.getElementById('r-kana').value='';document.getElementById('r-addr').value='';document.getElementById('r-memo').value='';document.querySelectorAll('#r-contact input,#r-needs input').forEach(x=>x.checked=false);
+    
+    // リセット後に再適用（またはリセット対象から除外）
+    // document.querySelector('input[name="r-camp"][value="4week"]').checked=true; // ←この行を削除
+    
+    setToday();updChkStyle('r-contact');updChkStyle('r-needs');
+}
 
-// 一覧描画：ID降順（新しい順）
 function render(){
     updSum();
     const q=document.getElementById('search').value.toLowerCase();
-    
-    // フィルタ・検索ありならクリアボタン表示
     const hasFilter = fKana||fCamp||fStat||fFollow||q;
     document.getElementById('f-clear').classList.toggle('hidden', !hasFilter);
-
     let f=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat){const[fc,fs]=fStat.split('-');const campMatch=fc==='4'?c.campaign==='4week':c.campaign==='2week';if(!campMatch||c.status!==fs)return false;}if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});
-    
-    // ソート：新しい順
     f.sort((a,b)=>b.id-a.id);
-
     document.getElementById('cnt').textContent=f.length;
     const cont=document.getElementById('cards');
     if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg">新規登録</button></div>';return;}
     if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl">該当なし</div>';return;}
-    
     cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px]">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');
 }
 
@@ -589,7 +594,6 @@ function toggleCampF(){const s=document.getElementById('sub-camp');const isHidde
 function toggleStatF(){const s=document.getElementById('sub-stat');const isHidden=s.classList.contains('hidden');document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');if(isHidden)s.classList.remove('hidden');}
 function toggleFollowF(){fFollow=!fFollow;const b=document.getElementById('f-follow');b.classList.toggle('bg-red-500',fFollow);b.classList.toggle('text-white',fFollow);b.classList.toggle('bg-gray-100',!fFollow);b.classList.toggle('text-gray-600',!fFollow);updFilterDisplay();render();}
 function setCampF(v){fCamp=v;document.querySelectorAll('#sub-camp button').forEach(b=>{b.classList.remove('bg-amber-500','bg-purple-500','bg-gray-500','text-white');if((v===''&&b.textContent==='全て')){b.classList.add('bg-gray-500','text-white');}else if((v==='4week'&&b.textContent==='4週間')){b.classList.add('bg-amber-500','text-white');}else if((v==='2week'&&b.textContent==='2週間')){b.classList.add('bg-purple-500','text-white');}});const pb=document.getElementById('f-camp');if(v){pb.classList.add('bg-amber-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-amber-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}
-    // ステータスフィルタ連動
     document.getElementById('stat-grp-4').classList.toggle('hidden', v==='2week');
     document.getElementById('stat-grp-2').classList.toggle('hidden', v==='4week');
     updFilterDisplay();render();}
@@ -616,7 +620,6 @@ function updCampUI(){
     const is2week=camp==='2week';
     updStatBadge(c.status,camp);
     
-    // 2週目ボタンの制御
     const w2opt=document.getElementById('week2-option');
     const w2done=document.getElementById('week2-done');
     if(w2opt&&w2done){
@@ -674,10 +677,10 @@ function parseJpDate(s){if(!s)return null;const m=s.match(/(\d{4})\/(\d{1,2})\/(
 
 function saveCust(){const c=data.find(x=>x.id===curId);if(!c)return;c.campaign=document.querySelector('input[name="d-camp"]:checked').value;c.name=document.getElementById('d-name').value.trim();c.kana=document.getElementById('d-kana').value.trim();c.address=document.getElementById('d-addr').value.trim();c.contact=getChk('d-contact').join(', ');c.needs=getChk('d-needs').join(', ');save();detDirty=false;toast('保存しました');}
 
-// チップ追加機能
-function addMemoTag(tag){
-    const area = document.getElementById('d-vmemo');
-    area.value = area.value ? area.value + ' ' + tag : tag;
+// チップ追加機能 (targetId指定に対応)
+function addMemoTag(targetId, tag){
+    const area = document.getElementById(targetId);
+    if(area) area.value = area.value ? area.value + ' ' + tag : tag;
 }
 
 // 2週目ボタン用関数
@@ -692,7 +695,7 @@ function addWeek2Visit(){
             c.week2Date=visitDate;
             c.week2Memo=memo;
             c.visitHistory.push({date:visitDate,memo:'📦2週目お届け'+(memo?' - '+memo:''),isWeek2:true});
-            c.status='communication'; // 2週目は確実にコミュ
+            c.status='communication';
             save();
             renderVisits(c);updCampUI();
             document.getElementById('d-vmemo').value='';
@@ -701,9 +704,23 @@ function addWeek2Visit(){
     },'📦','完了','bg-purple-600');
 }
 
-// 訪問追加（不在対応）
+// 訪問追加（不在対応 + 確認ダイアログ）
 function addVisit(isAbsent){
     if(processing)return;
+    
+    // 不在ボタンの場合のみ確認メッセージを表示
+    if(isAbsent){
+        showCf('確認','「不在」として記録しますか？\n（訪問回数にはカウントされません）', r => {
+            if(r) {
+                execAddVisit(true);
+            }
+        }, '🚪', '記録する', 'bg-gray-500');
+    } else {
+        execAddVisit(false);
+    }
+}
+
+function execAddVisit(isAbsent){
     processing=true;
     const btn=document.getElementById('add-v-btn');
     btn.classList.add('disabled');
@@ -714,14 +731,12 @@ function addVisit(isAbsent){
     let memo=document.getElementById('d-vmemo').value.trim();
     const visitDate=document.getElementById('d-vdate').value+' '+document.getElementById('d-vtime').value;
     
-    // 不在処理
     if(isAbsent){
         memo = '【不在】' + (memo ? ' ' + memo : '');
     }
 
     c.visitHistory.push({date:visitDate,memo:memo});
 
-    // ステータス更新ロジック：不在が含まれる場合はカウントしない
     const validVisits = c.visitHistory.filter(v => !v.memo.includes('【不在】'));
     if(c.status==='sampling' && validVisits.length>1){
         c.status='communication';
@@ -733,7 +748,7 @@ function addVisit(isAbsent){
         document.getElementById('d-vmemo').value='';
         setToday();
         if(isAbsent){
-            toast('不在として記録しました（ステータス維持）');
+            toast('不在として記録しました');
         } else if(prevSt!==c.status){
             toast('追加しました（ステータス更新）');
         }else{
@@ -813,17 +828,14 @@ function jpToStat(jp){const m={'サンプリング':'sampling','コミュニケ�
 function doExport(){const d=data.map(c=>({ID:c.id,キャンペーン:c.campaign==='4week'?'4週間体感':'2週間無料',顧客名:c.name||'',よみがな:c.kana||'',住所:c.address||'',対面者:c.contact||'',ニーズ:c.needs||'',ステータス:statToJp(c.status,c.campaign),CP申込:c.acquired?'済':'',申込日:c.acquiredDate?fmtDate(c.acquiredDate):'',継続:c.continued?'済':'',継続日:c.continuedDate?fmtDate(c.continuedDate):'','2週目お届け':c.week2Delivered?'済':'','2週目日時':c.week2Date||'','2週目メモ':c.week2Memo||'',訪問履歴JSON:JSON.stringify(c.visitHistory||[])}));const ws=XLSX.utils.json_to_sheet(d),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'顧客');XLSX.writeFile(wb,`顧客_${new Date().toISOString().split('T')[0]}.xlsx`);toast('Excel出力しました');}
 function confirmImport(){showCf('データ復元',`現在の${data.length}件が全削除されます。`,r=>{if(r)document.getElementById('imp-file').click();},'⚠️','復元','bg-red-500');}
 
-// インポート日付処理修正: シリアル値対応 + cellDates:true
 function importXL(e){
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=ev=>{
         try{
             const d=new Uint8Array(ev.target.result);
-            // cellDates: true で読み込むことでシリアル値をDateオブジェクトに変換
             const wb=XLSX.read(d,{type:'array', cellDates: true});
             const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            
             data=j.map(row=>({
                 id:row['ID']||idCnt++,
                 campaign:row['キャンペーン']==='2週間無料'?'2week':'4week',
@@ -848,11 +860,10 @@ function importXL(e){
     r.readAsArrayBuffer(f);e.target.value='';
 }
 
-// インポート用日付パーサー (Dateオブジェクトまたは文字列に対応)
 function parseImpDate(v){
     if(!v) return null;
-    if(v instanceof Date) return v.toISOString(); // cellDates:trueの効果
-    if(typeof v === 'string') return parseJpDate(v); // 従来の文字列形式
+    if(v instanceof Date) return v.toISOString();
+    if(typeof v === 'string') return parseJpDate(v);
     return null;
 }
 
