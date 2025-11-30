@@ -821,4 +821,100 @@ document.getElementById('p4-comm-bar').style.width=samp4?comm4/samp4*100+'%':'0%
 document.getElementById('p4-acq-bar').style.width=comm4?acq4/comm4*100+'%':'0%';
 document.getElementById('p4-cont-bar').style.width=acq4?cont4/acq4*100+'%':'0%';
 const acq2=c2.length,w2=c2.filter(c=>c.week2Delivered).length,cont2=c2.filter(c=>c.continued).length;
-document.getElementById('p2-acq').textContent=acq2;document.getElementById('p2-goal-disp
+document.getElementById('p2-acq').textContent=acq2;document.getElementById('p2-goal-disp').textContent=goals.g2;
+document.getElementById('p2-w2').textContent=w2;document.getElementById('p2-acq2').textContent=acq2;
+document.getElementById('p2-cont').textContent=cont2;document.getElementById('p2-acq3').textContent=acq2;
+document.getElementById('p2-acq-bar').style.width=Math.min(acq2/goals.g2*100,100)+'%';document.getElementById('p2-acq-bar').className='prog-fill '+(acq2>=goals.g2?'bg-green-500':'bg-purple-500');
+document.getElementById('p2-w2-bar').style.width=acq2?w2/acq2*100+'%':'0%';
+document.getElementById('p2-cont-bar').style.width=acq2?cont2/acq2*100+'%':'0%';
+document.getElementById('p-all').textContent=data.length;document.getElementById('p-all-acq').textContent=data.filter(c=>c.acquired||c.campaign==='2week').length;}
+
+function save(){localStorage.setItem('cdata',JSON.stringify(data));localStorage.setItem('idCnt',idCnt.toString());}
+
+function confirmDeleteAll(){showCf('⚠️ 警告','全ての顧客データを削除します。\nこの操作は取り消せません。\n\n※削除前に「Excel出力」でバックアップを取ることをお勧めします。',r=>{if(r){showCf('⚠️ 最終確認1/2','本当に全データを削除しますか？',r2=>{if(r2){showCf('🚨 最終確認2/2','最後の確認です。\n削除を実行してもよろしいですか？',r3=>{if(r3){data=[];idCnt=1;save();localStorage.removeItem('initialized');toast('全データを削除しました','🗑️');render();}},'🚨','完全に削除','bg-red-600');}},'⚠️','削除する','bg-red-500');}},'⚠️','続ける','bg-red-500');}
+
+function confirmRestoreSample(){
+    if(data.length > 300) { toast('データ件数が多すぎるため作成できません','🚫'); return; }
+    const hasSample=data.some(c=>c.name&&c.name.includes('【見本】'));if(hasSample){showCf('確認 (1/3)','既に見本データが存在します。\nさらに追加しますか？',r=>{if(r){showCf('確認 (2/3)','140件の見本データを追加します。\n続けますか？',r2=>{if(r2){showCf('最終確認 (3/3)','見本データを追加してもよろしいですか？',r3=>{if(r3)addSampleData();},'📋','追加する','bg-amber-500');}},'⚠️','続ける','bg-amber-500');}},'⚠️','次へ','bg-amber-500');}else{showCf('確認 (1/3)','見本データを追加しますか？',r=>{if(r){showCf('確認 (2/3)','140件の見本データを追加します。\n続けますか？',r2=>{if(r2){showCf('最終確認 (3/3)','見本データを追加してもよろしいですか？',r3=>{if(r3)addSampleData();},'📋','追加する','bg-blue-500');}},'📋','続ける','bg-blue-500');}},'📋','次へ','bg-blue-500');}}
+
+function addSampleData(){
+const LN=['田中','佐藤','鈴木','高橋','渡辺','伊藤','山本','中村','小林','加藤','吉田','山田','佐々木','松本','井上','木村','林','斎藤','清水','山口','森','池田','橋本','阿部','石川','前田','藤田','岡田','後藤','村上','近藤','石井','坂本','遠藤','青木','藤井','西村','福田','太田','三浦','藤原','岡本','松田','中川','中野','原田','小野','竹内','金子','和田','中山','石田','上田','森田','原','柴田','酒井','工藤','横山'];
+const KN={'田中':'たなか','佐藤':'さとう','鈴木':'すずき','高橋':'たかはし','渡辺':'わたなべ','伊藤':'いとう','山本':'やまもと','中村':'なかむら','小林':'こばやし','加藤':'かとう','吉田':'よしだ','山田':'やまだ','佐々木':'ささき','松本':'まつもと','井上':'いのうえ','木村':'きむら','林':'はやし','斎藤':'さいとう','清水':'しみず','山口':'やまぐち','森':'もり','池田':'いけだ','橋本':'はしもと','阿部':'あべ','石川':'いしかわ','前田':'まえだ','藤田':'ふじた','岡田':'おかだ','後藤':'ごとう','村上':'むらかみ','近藤':'こんどう','石井':'いしい','坂本':'さかもと','遠藤':'えんどう','青木':'あおき','藤井':'ふじい','西村':'にしむら','福田':'ふくだ','太田':'おおた','三浦':'みうら','藤原':'ふじわら','岡本':'おかもと','松田':'まつだ','中川':'なかがわ','中野':'なかの','原田':'はらだ','小野':'おの','竹内':'たけうち','金子':'かねこ','和田':'わだ','中山':'なかやま','石田':'いしだ','上田':'うえだ','森田':'もりた','原':'はら','柴田':'しばた','酒井':'さかい','工藤':'くどう','横山':'よこやま'};
+const AD=['桜町','緑が丘','青葉台','松原','梅田','若葉','日の出','東町','西町','南町','北町','中央','本町','新町','旭町','栄町','幸町','寿町','富士見','弥生'];
+const CT=['奥','旦那','おば','おじ','子'];
+const ND=['便秘','下痢','睡眠','ストレス','アレルギー'];
+const M1=['初回訪問。サンプルをお渡し。','興味を持ってくださった。','家族の健康が気になるとのこと。','以前ヤクルトを飲んでいた。','お子様の健康のため検討中。','腸内環境に興味あり。','知人の紹介で興味を持った。','テレビで見て気になっていた。','健康診断の結果が気になる。','最近お腹の調子が良くない。'];
+const M2=['2回目訪問。調子が良いとのこと。','家族も興味を持ち始めた。','毎日飲んでいるとのこと。','効果を実感し始めている。','もう少し続けてみたい。','味が好きとのこと。','お腹の調子が良くなった。','朝の目覚めが良くなった。','便通が改善された。','家族にも勧めたい。'];
+const M3=['CP申込いただきました！','継続を決めてくださった。','ご家族分も申込。','定期購入を希望。','友人にも紹介したい。'];
+const MW=['2週目お届け完了。継続検討中。','2週目お届け。効果を実感中。','2週目。家族も飲み始めた。','2週目お届け。味が気に入った様子。','2週目完了。前向きに検討中。'];
+const ri=(a)=>a[Math.floor(Math.random()*a.length)];
+const ris=(a,n)=>{const s=[...a].sort(()=>0.5-Math.random());return s.slice(0,n).join(', ');};
+const rd=(d)=>{const dt=new Date();dt.setDate(dt.getDate()-Math.floor(Math.random()*d));return dt.toISOString().split('T')[0];};
+const rt=()=>{const h=9+Math.floor(Math.random()*10);return`${String(h).padStart(2,'0')}:${Math.random()>0.5?'00':'30'}`;};
+const samples=[];let sid=data.length>0?Math.max(...data.map(c=>c.id))+1:1;
+for(let i=0;i<90;i++){
+const ln=ri(LN);const vc=1+Math.floor(Math.random()*4);const vh=[];
+for(let v=0;v<vc;v++){const da=28-(v*7)+Math.floor(Math.random()*5);vh.push({date:`${rd(da)} ${rt()}`,memo:v===0?ri(M1):v===1?ri(M2):v>=2?ri(M3):'フォロー訪問。'});}
+let st='sampling',acq=false,cont=false;
+if(vc>=2){st='communication';if(Math.random()>0.4){st='acquired';acq=true;if(Math.random()>0.3)cont=true;}}
+samples.push({id:sid++,campaign:'4week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:st,acquired:acq,acquiredDate:acq?new Date(Date.now()-Math.random()*14*86400000).toISOString():null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:false,week2Date:null,week2Memo:'',visitHistory:vh,createdAt:new Date(Date.now()-28*86400000+Math.random()*7*86400000).toISOString()});
+}
+for(let i=0;i<50;i++){
+const ln=ri(LN);const w2=Math.random()>0.3;const cont=w2&&Math.random()>0.5;
+samples.push({id:sid++,campaign:'2week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:'sampling',acquired:false,acquiredDate:null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:w2,week2Date:w2?`${rd(7)} ${rt()}`:null,week2Memo:w2?ri(MW):'',visitHistory:[{date:`${rd(14)} ${rt()}`,memo:'2週間無料CPでお試し開始。'}],createdAt:new Date(Date.now()-14*86400000+Math.random()*7*86400000).toISOString()});
+}
+data.push(...samples);idCnt=Math.max(...data.map(c=>c.id))+1;save();toast('見本データ140件を追加しました');render();
+}
+
+function exportXL(){if(data.length===0){showCf('確認','データがありません。空ファイルを出力しますか？',r=>{if(r)doExport();},'⚠️','出力','bg-amber-500');return;}doExport();}
+function statToJp(s,camp){if(camp==='2week'){return s==='sampling'?'1週間分お届け済':s==='communication'?'2週間分お届け済':'';}return s==='sampling'?'サンプリング':s==='communication'?'コミュニケーション':s==='acquired'?'CP申込':'';}
+function jpToStat(jp){const m={'サンプリング':'sampling','コミュニケーション':'communication','CP申込':'acquired','1週間分お届け済':'sampling','2週間分お届け済':'communication'};return m[jp]||'sampling';}
+function doExport(){const now=new Date();const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;const d=data.map(c=>({ID:c.id,キャンペーン:c.campaign==='4week'?'4週間体感':'2週間無料',顧客名:c.name||'',よみがな:c.kana||'',住所:c.address||'',対面者:c.contact||'',ニーズ:c.needs||'',ステータス:statToJp(c.status,c.campaign),CP申込:c.acquired?'済':'',申込日:c.acquiredDate?fmtDate(c.acquiredDate):'',継続:c.continued?'済':'',継続日:c.continuedDate?fmtDate(c.continuedDate):'','2週目お届け':c.week2Delivered?'済':'','2週目日時':c.week2Date||'','2週目メモ':c.week2Memo||'',訪問履歴JSON:JSON.stringify(c.visitHistory||[])}));const ws=XLSX.utils.json_to_sheet(d),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'顧客');XLSX.writeFile(wb,`顧客_${ts}.xlsx`);toast('Excel出力しました');}
+function confirmImport(){showCf('データ復元',`現在の${data.length}件が全削除されます。`,r=>{if(r)document.getElementById('imp-file').click();},'⚠️','復元','bg-red-500');}
+
+function importXL(e){
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+        try{
+            const d=new Uint8Array(ev.target.result);
+            const wb=XLSX.read(d,{type:'array', cellDates: true});
+            const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            data=j.map(row=>({
+                id:row['ID']||idCnt++,
+                campaign:row['キャンペーン']==='2週間無料'?'2week':'4week',
+                name:row['顧客名']||'',
+                kana:row['よみがな']||'',
+                address:row['住所']||'',
+                contact:row['対面者']||'',
+                needs:row['ニーズ']||'',
+                status:jpToStat(row['ステータス']),
+                acquired:row['CP申込']==='済',
+                acquiredDate:parseImpDate(row['申込日']),
+                continued:row['継続']==='済',
+                continuedDate:parseImpDate(row['継続日']),
+                week2Delivered:row['2週目お届け']==='済',
+                week2Date:row['2週目日時']||null,
+                week2Memo:row['2週目メモ']||'',
+                visitHistory:row['訪問履歴JSON']?JSON.parse(row['訪問履歴JSON']):[]
+            }));
+            const mx=Math.max(...data.map(c=>c.id),0);idCnt=mx+1;save();toast(`${data.length}件復元`);render();
+        }catch(err){toast('読込失敗','❌');console.error(err);}
+    };
+    r.readAsArrayBuffer(f);e.target.value='';
+}
+
+function parseImpDate(v){
+    if(!v) return null;
+    if(v instanceof Date) return v.toISOString();
+    if(typeof v === 'string') return parseJpDate(v);
+    return null;
+}
+
+function toast(m,i='✅'){document.getElementById('toast-msg').textContent=m;document.getElementById('toast-icon').textContent=i;document.getElementById('toast').classList.remove('hidden');setTimeout(()=>document.getElementById('toast').classList.add('hidden'),3000);}
+function hideToast(){document.getElementById('toast').classList.add('hidden');}
+
+if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));}
+</script>
+</body>
+</html>
