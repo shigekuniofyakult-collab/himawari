@@ -12,341 +12,380 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         *{-webkit-tap-highlight-color:transparent}
-        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+        /* スワイプ更新防止 & フォント調整 */
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; overscroll-behavior-y: none;}
         .tab-active{background:#F59E0B;color:#fff}
         .tab-inactive{background:#FEF3C7;color:#92400E}
         .card{transition:all .2s}
         .card:active{transform:scale(.98)}
         .cb-label input:checked+span{background:#F59E0B;color:#fff;border-color:#F59E0B}
+        /* トーストアニメーション */
         .toast{animation:slideIn .3s}
         @keyframes slideIn{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
         .overlay{background:rgba(0,0,0,.5)}
-        input[type="date"],select{min-height:44px;text-align:center}
+        /* 入力エリアの高さ確保 */
+        input[type="date"],select{min-height:48px;text-align:center;font-size:16px;}
+        input[type="text"],textarea{font-size:16px;} /* iOSズーム防止 */
         .disabled{opacity:.5;pointer-events:none}
         .choice{min-width:52px;padding:8px 4px;text-align:center}
         .kana-btn{min-width:32px;min-height:36px}
         .kana-btn.on{background:#F59E0B;color:#fff}
+        /* ステータスバッジ色定義 */
         .st-samp{background:#DBEAFE;color:#1E40AF}
         .st-comm{background:#FEF3C7;color:#92400E}
         .st-acq{background:#D1FAE5;color:#065F46}
         .st-samp2{background:#EDE9FE;color:#6D28D9}
         .st-comm2{background:#DDD6FE;color:#5B21B6}
-        .camp-4{border-left:4px solid #F59E0B}
-        .camp-2{border-left:4px solid #8B5CF6}
+        .camp-4{border-left:5px solid #F59E0B}
+        .camp-2{border-left:5px solid #8B5CF6}
         .prog-bar{height:8px;border-radius:4px;background:#E5E7EB;overflow:hidden}
         .prog-fill{height:100%;border-radius:4px}
-        .chip{background:#E5E7EB;color:#374151;padding:4px 12px;border-radius:16px;font-size:0.85rem;cursor:pointer;user-select:none;}
-        .chip:active{background:#D1D5DB;}
+        /* チップデザイン */
+        .chip{background:#E5E7EB;color:#374151;padding:6px 14px;border-radius:20px;font-size:0.9rem;cursor:pointer;user-select:none;transition:background .2s}
+        .chip:active{background:#D1D5DB;transform:scale(0.95)}
+        /* メモ省略表示 */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* トップへ戻るボタン */
+        #go-top {transition: opacity 0.3s; opacity: 0; pointer-events: none;}
+        #go-top.visible {opacity: 1; pointer-events: auto;}
     </style>
 </head>
-<body class="bg-amber-50 min-h-screen pb-4">
-    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden cursor-pointer" onclick="hideToast()">
-        <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 toast">
-            <span id="toast-icon">✅</span><span id="toast-msg">保存しました</span>
+<body class="bg-amber-50 min-h-screen pb-20"> <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden cursor-pointer w-11/12 max-w-sm" onclick="hideToast()">
+        <div class="bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 toast">
+            <span id="toast-icon" class="text-2xl">✅</span><span id="toast-msg" class="font-bold">保存しました</span>
         </div>
     </div>
-    <div id="undo-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden">
-        <div class="bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-4">
+    
+    <div id="undo-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 hidden w-11/12 max-w-sm">
+        <div class="bg-gray-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
             <span id="undo-msg">削除しました</span>
-            <button onclick="undoDelete()" class="bg-amber-500 text-white px-3 py-1 rounded font-medium">元に戻す</button>
+            <button onclick="undoDelete()" class="bg-amber-500 text-white px-4 py-1 rounded font-bold text-sm">元に戻す</button>
         </div>
     </div>
+
     <div id="confirm-modal" class="fixed inset-0 z-50 hidden">
         <div class="overlay absolute inset-0"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative z-10 text-center">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 relative z-10 text-center animate-[scaleIn_0.2s_ease-out]">
                 <div class="text-4xl mb-3" id="cf-icon">⚠️</div>
                 <h3 class="text-lg font-bold text-gray-800 mb-2" id="cf-title">確認</h3>
-                <p id="cf-msg" class="text-gray-600 mb-4 whitespace-pre-line"></p>
+                <p id="cf-msg" class="text-gray-600 mb-6 whitespace-pre-line leading-relaxed"></p>
                 <div class="flex gap-3">
-                    <button onclick="closeConfirm(false)" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
-                    <button onclick="closeConfirm(true)" id="cf-ok" class="flex-1 py-3 bg-amber-500 text-white rounded-lg font-medium">OK</button>
+                    <button onclick="closeConfirm(false)" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold">キャンセル</button>
+                    <button onclick="closeConfirm(true)" id="cf-ok" class="flex-1 py-3 bg-amber-500 text-white rounded-lg font-bold shadow-md">OK</button>
                 </div>
             </div>
         </div>
     </div>
+
     <div id="edit-modal" class="fixed inset-0 z-40 hidden">
         <div class="overlay absolute inset-0" onclick="closeEditModal()"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10 max-h-[90vh] overflow-y-auto">
                 <h3 class="text-lg font-bold text-gray-800 mb-4">訪問記録を編集</h3>
                 <div class="space-y-4">
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
                         <div class="flex items-center gap-2">
-                            <input type="date" id="ed-date" class="flex-1 border rounded-lg px-3 py-2" oninput="editDirty=true" onchange="updWeekdayDisp('ed-date','ed-weekday')">
+                            <input type="date" id="ed-date" class="flex-1 border rounded-lg px-3 py-2 bg-gray-50" oninput="editDirty=true" onchange="updWeekdayDisp('ed-date','ed-weekday')">
                             <span id="ed-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
                         </div>
                     </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
-                        <select id="ed-time" class="w-full border rounded-lg px-3 py-2" onchange="editDirty=true"></select></div>
+                        <select id="ed-time" class="w-full border rounded-lg px-3 py-2 bg-gray-50" onchange="editDirty=true"></select></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
-                        <textarea id="ed-memo" rows="3" class="w-full border rounded-lg px-3 py-2" oninput="editDirty=true"></textarea></div>
+                        <textarea id="ed-memo" rows="3" class="w-full border rounded-lg px-3 py-2 bg-gray-50" oninput="editDirty=true"></textarea></div>
                 </div>
                 <div class="flex gap-3 mt-6">
-                    <button onclick="closeEditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
-                    <button onclick="saveEditVisit()" class="flex-1 py-3 bg-amber-500 text-white rounded-lg font-medium">保存</button>
+                    <button onclick="closeEditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold">キャンセル</button>
+                    <button onclick="saveEditVisit()" class="flex-1 py-3 bg-amber-500 text-white rounded-lg font-bold shadow">保存</button>
                 </div>
             </div>
         </div>
     </div>
+
     <div id="week2-edit-modal" class="fixed inset-0 z-40 hidden">
         <div class="overlay absolute inset-0" onclick="closeWeek2EditModal()"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10">
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative z-10 max-h-[90vh] overflow-y-auto">
                 <h3 class="text-lg font-bold text-purple-700 mb-4">📦 2週目お届けを編集</h3>
                 <div class="space-y-4">
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">お届け日</label>
                         <div class="flex items-center gap-2">
-                            <input type="date" id="w2ed-date" class="flex-1 border rounded-lg px-3 py-2" oninput="w2EditDirty=true" onchange="updWeekdayDisp('w2ed-date','w2ed-weekday')">
+                            <input type="date" id="w2ed-date" class="flex-1 border rounded-lg px-3 py-2 bg-gray-50" oninput="w2EditDirty=true" onchange="updWeekdayDisp('w2ed-date','w2ed-weekday')">
                             <span id="w2ed-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
                         </div>
                     </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
-                        <select id="w2ed-time" class="w-full border rounded-lg px-3 py-2" onchange="w2EditDirty=true"></select></div>
+                        <select id="w2ed-time" class="w-full border rounded-lg px-3 py-2 bg-gray-50" onchange="w2EditDirty=true"></select></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
-                        <textarea id="w2ed-memo" rows="3" class="w-full border rounded-lg px-3 py-2" oninput="w2EditDirty=true"></textarea></div>
+                        <textarea id="w2ed-memo" rows="3" class="w-full border rounded-lg px-3 py-2 bg-gray-50" oninput="w2EditDirty=true"></textarea></div>
                 </div>
                 <div class="flex gap-3 mt-6">
-                    <button onclick="closeWeek2EditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium">キャンセル</button>
-                    <button onclick="saveWeek2Edit()" class="flex-1 py-3 bg-purple-500 text-white rounded-lg font-medium">保存</button>
+                    <button onclick="closeWeek2EditModal()" class="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-bold">キャンセル</button>
+                    <button onclick="saveWeek2Edit()" class="flex-1 py-3 bg-purple-500 text-white rounded-lg font-bold shadow">保存</button>
                 </div>
-                <button onclick="deleteWeek2FromModal()" class="w-full mt-3 py-2 text-red-500 text-sm">🗑️ 2週目お届けを削除</button>
+                <button onclick="deleteWeek2FromModal()" class="w-full mt-4 py-3 text-red-500 text-sm font-medium border border-red-200 rounded-lg hover:bg-red-50">🗑️ 2週目お届け記録を削除</button>
             </div>
         </div>
     </div>
 
     <header class="bg-gradient-to-r from-amber-400 to-yellow-400 shadow-md sticky top-0 z-30">
         <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span class="text-3xl">🌻</span>
-                <div><h1 class="text-xl font-bold text-amber-900">ひまわり活動</h1><p class="text-xs text-amber-700">顧客管理</p></div>
+            <div class="flex items-center gap-3" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+                <span class="text-3xl filter drop-shadow-sm">🌻</span>
+                <div><h1 class="text-xl font-bold text-amber-900 leading-tight">ひまわり活動</h1><p class="text-xs text-amber-800 font-medium">顧客管理アプリ</p></div>
             </div>
-            <button onclick="showScreen('progress')" class="bg-white/30 text-amber-900 px-3 py-1 rounded-lg text-sm font-medium">📊進捗</button>
+            <button onclick="showScreen('progress')" class="bg-white/40 text-amber-900 px-3 py-1.5 rounded-lg text-sm font-bold backdrop-blur-sm border border-white/50 active:scale-95 transition">📊 進捗</button>
         </div>
     </header>
 
     <nav class="bg-white shadow-sm sticky top-[68px] z-20">
-        <div class="max-w-2xl mx-auto px-4 flex">
-            <button onclick="gotoTab('register')" id="tab-reg" class="flex-1 py-3 text-center font-medium text-sm tab-active rounded-t-lg">新規登録</button>
-            <button onclick="gotoTab('list')" id="tab-list" class="flex-1 py-3 text-center font-medium text-sm tab-inactive rounded-t-lg">顧客一覧</button>
+        <div class="max-w-2xl mx-auto px-2 flex gap-1 pt-1">
+            <button onclick="gotoTab('register')" id="tab-reg" class="flex-1 py-3 text-center font-bold text-sm tab-active rounded-t-lg shadow-sm border-t border-x border-amber-200">新規登録</button>
+            <button onclick="gotoTab('list')" id="tab-list" class="flex-1 py-3 text-center font-bold text-sm tab-inactive rounded-t-lg border-t border-x border-transparent">顧客一覧</button>
         </div>
     </nav>
 
     <main class="max-w-2xl mx-auto px-4 py-6">
         <div id="scr-register" class="space-y-6">
-            <div class="bg-white rounded-xl shadow-md p-5">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">📝 新規顧客登録</h2>
-                <div class="space-y-4">
-                    <div><label class="block text-sm font-medium text-gray-700 mb-2">キャンペーン</label>
+            <div class="bg-white rounded-xl shadow-md p-5 border border-amber-100">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">📝 新規顧客登録</h2>
+                <div class="space-y-5">
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">キャンペーン</label>
                         <div class="flex gap-2">
                             <label class="flex-1"><input type="radio" name="r-camp" value="4week" class="hidden peer" checked>
-                                <div class="peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 border-2 border-gray-300 rounded-lg py-2 text-center cursor-pointer text-sm">4週間体感</div></label>
+                                <div class="peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 border-2 border-gray-300 rounded-xl py-3 text-center cursor-pointer text-sm font-bold transition shadow-sm">4週間体感</div></label>
                             <label class="flex-1"><input type="radio" name="r-camp" value="2week" class="hidden peer">
-                                <div class="peer-checked:bg-purple-500 peer-checked:text-white peer-checked:border-purple-500 border-2 border-gray-300 rounded-lg py-2 text-center cursor-pointer text-sm">2週間無料</div></label>
+                                <div class="peer-checked:bg-purple-500 peer-checked:text-white peer-checked:border-purple-500 border-2 border-gray-300 rounded-xl py-3 text-center cursor-pointer text-sm font-bold transition shadow-sm">2週間無料</div></label>
                         </div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">顧客名</label>
-                        <input type="text" id="r-name" placeholder="例: 田中様" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">よみがな <span class="text-gray-400 text-xs">(50音検索用)</span></label>
-                        <input type="text" id="r-kana" placeholder="例: たなか" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
-                        <input type="text" id="r-addr" placeholder="例: 〇〇町1-2-3" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-2">対面者</label>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">顧客名 <span class="text-red-500">*</span></label>
+                        <input type="text" id="r-name" placeholder="例: 田中様" class="w-full border rounded-lg px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="formDirty=true"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">よみがな <span class="text-gray-400 text-xs font-normal">(ひらがな)</span></label>
+                        <input type="text" id="r-kana" placeholder="例: たなか" class="w-full border rounded-lg px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="formDirty=true"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">住所</label>
+                        <input type="text" id="r-addr" placeholder="例: 〇〇町1-2-3" class="w-full border rounded-lg px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="formDirty=true"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">対面者</label>
                         <div class="flex flex-wrap gap-2" id="r-contact">
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="奥" class="hidden"><span class="choice inline-block border rounded-lg text-sm">奥</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="旦那" class="hidden"><span class="choice inline-block border rounded-lg text-sm">旦那</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おば" class="hidden"><span class="choice inline-block border rounded-lg text-sm">おば</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おじ" class="hidden"><span class="choice inline-block border rounded-lg text-sm">おじ</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="子" class="hidden"><span class="choice inline-block border rounded-lg text-sm">子</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="奥" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">奥</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="旦那" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">旦那</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おば" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">おば</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おじ" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">おじ</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="子" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">子</span></label>
                         </div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-2">ニーズ</label>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">ニーズ</label>
                         <div class="flex flex-wrap gap-2" id="r-needs">
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="便秘" class="hidden"><span class="choice inline-block border rounded-lg text-sm">便秘</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="下痢" class="hidden"><span class="choice inline-block border rounded-lg text-sm">下痢</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="睡眠" class="hidden"><span class="choice inline-block border rounded-lg text-sm">睡眠</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="ストレス" class="hidden"><span class="choice inline-block border rounded-lg text-sm">ストレス</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="アレルギー" class="hidden"><span class="choice inline-block border rounded-lg text-sm">アレルギー</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="便秘" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">便秘</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="下痢" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">下痢</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="睡眠" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">睡眠</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="ストレス" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">ストレス</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="アレルギー" class="hidden"><span class="choice inline-block border rounded-lg text-sm bg-white">アレルギー</span></label>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">訪問メモ</label>
-                        <textarea id="r-memo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></textarea>
-                        <div class="flex gap-2 mt-2 flex-wrap">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">訪問メモ</label>
+                        <textarea id="r-memo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="formDirty=true"></textarea>
+                        <div class="flex gap-2 mt-3 flex-wrap">
                             <span class="chip" onclick="addMemoTag('r-memo', '興味あり')">興味あり</span>
                             <span class="chip" onclick="addMemoTag('r-memo', '憩い')">憩い</span>
                         </div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
-                        <div class="flex items-center gap-2">
-                            <button onclick="chgDate('r-date',-1);updWeekdayDisp('r-date','r-weekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
-                            <input type="date" id="r-date" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('r-date','r-weekday')">
-                            <button onclick="chgDate('r-date',1);updWeekdayDisp('r-date','r-weekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">▶</button>
-                            <span id="r-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-bold text-gray-700 mb-1">初回訪問日</label>
+                            <div class="flex items-center gap-1">
+                                <button onclick="chgDate('r-date',-1);updWeekdayDisp('r-date','r-weekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg hover:bg-gray-200">◀</button>
+                                <input type="date" id="r-date" class="flex-1 border rounded-lg px-1 py-2 text-center bg-gray-50" onchange="updWeekdayDisp('r-date','r-weekday');checkFutureDate('r-date')">
+                                <button onclick="chgDate('r-date',1);updWeekdayDisp('r-date','r-weekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg hover:bg-gray-200">▶</button>
+                            </div>
+                            <div id="r-weekday" class="text-center text-xs text-gray-500 mt-1 font-bold"></div>
                         </div>
+                        <div><label class="block text-sm font-bold text-gray-700 mb-1">訪問時刻</label>
+                            <select id="r-time" class="w-full border rounded-lg px-2 py-2 bg-gray-50"></select></div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
-                        <select id="r-time" class="w-full border rounded-lg px-3 py-2"></select></div>
-                    <button onclick="regCustomer()" id="reg-btn" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg text-lg">🌻 登録する</button>
+                    <button onclick="regCustomer()" id="reg-btn" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold py-4 rounded-xl shadow-lg text-lg active:scale-[0.98] transition mt-2">🌻 登録する</button>
                 </div>
             </div>
         </div>
 
         <div id="scr-list" class="hidden space-y-4">
-            <div class="bg-white rounded-xl shadow-md p-3">
+            <div class="bg-white rounded-xl shadow-sm p-3 border border-gray-100">
                 <div class="text-center">
-                    <span class="text-gray-600 text-sm">登録数：</span><span class="text-blue-600 font-bold text-lg" id="sum-total">0</span><span class="text-gray-600 text-sm">件</span>
+                    <span class="text-gray-600 text-sm">現在の登録数：</span><span class="text-blue-600 font-bold text-2xl mx-1" id="sum-total">0</span><span class="text-gray-600 text-sm">件</span>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-4">
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-                    <input type="text" id="search" placeholder="検索... 例: 田中, 桜町, 便秘" oninput="render()" class="w-full border rounded-lg pl-10 pr-10 py-3">
-                    <button onclick="clearAllFilters()" id="f-clear" class="absolute right-2 top-1/2 -translate-y-1/2 bg-red-500 text-white text-xs px-2 py-1 rounded hidden">✕ 条件クリア</button>
+            
+            <div class="sticky top-[130px] z-10 bg-amber-50 pt-1 pb-2"> <div class="bg-white rounded-xl shadow-md p-3 relative">
+                    <span class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                    <input type="text" id="search" placeholder="名前, 住所, メモ検索..." oninput="render()" class="w-full border rounded-lg pl-10 pr-24 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <button onclick="clearAllFilters()" id="f-clear" class="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-500 text-white text-xs px-3 py-1.5 rounded-full hidden font-bold shadow hover:bg-gray-600 transition">✕ クリア</button>
                 </div>
             </div>
+
             <div class="bg-white rounded-xl shadow-md p-3">
                 <div class="flex flex-wrap gap-1 justify-center" id="kana-filter">
-                    <button onclick="setKana('')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 on">全て</button>
-                    <button onclick="setKana('あ')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">あ</button>
-                    <button onclick="setKana('か')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">か</button>
-                    <button onclick="setKana('さ')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">さ</button>
-                    <button onclick="setKana('た')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">た</button>
-                    <button onclick="setKana('な')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">な</button>
-                    <button onclick="setKana('は')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">は</button>
-                    <button onclick="setKana('ま')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">ま</button>
-                    <button onclick="setKana('や')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">や</button>
-                    <button onclick="setKana('ら')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">ら</button>
-                    <button onclick="setKana('わ')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">わ</button>
-                    <button onclick="setKana('他')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100">他</button>
+                    <button onclick="setKana('')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 on font-medium">全て</button>
+                    <button onclick="setKana('あ')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">あ</button>
+                    <button onclick="setKana('か')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">か</button>
+                    <button onclick="setKana('さ')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">さ</button>
+                    <button onclick="setKana('た')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">た</button>
+                    <button onclick="setKana('な')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">な</button>
+                    <button onclick="setKana('は')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">は</button>
+                    <button onclick="setKana('ま')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">ま</button>
+                    <button onclick="setKana('や')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">や</button>
+                    <button onclick="setKana('ら')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">ら</button>
+                    <button onclick="setKana('わ')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">わ</button>
+                    <button onclick="setKana('他')" class="kana-btn px-2 py-1 rounded text-sm bg-gray-100 font-medium">他</button>
                 </div>
             </div>
+            
             <div class="bg-white rounded-xl shadow-md p-3">
                 <div class="flex flex-wrap gap-2 justify-center">
-                    <button onclick="toggleCampF()" id="f-camp" class="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">📅キャンペーン</button>
-                    <button onclick="toggleStatF()" id="f-stat" class="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">📊ステータス</button>
-                    <button onclick="toggleFollowF()" id="f-follow" class="px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-600">🔴要フォロー(15日)</button>
+                    <button onclick="toggleCampF()" id="f-camp" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-transparent">📅 キャンペーン</button>
+                    <button onclick="toggleStatF()" id="f-stat" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-transparent">📊 ステータス</button>
+                    <button onclick="toggleFollowF()" id="f-follow" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-transparent">🔴 要フォロー(15日)</button>
                 </div>
-                <div id="sub-camp" class="hidden mt-3 flex gap-2 justify-center">
-                    <button onclick="setCampF('')" class="px-3 py-1 rounded text-xs bg-gray-200">全て</button>
-                    <button onclick="setCampF('4week')" class="px-3 py-1 rounded text-xs bg-amber-100 text-amber-700">4週間</button>
-                    <button onclick="setCampF('2week')" class="px-3 py-1 rounded text-xs bg-purple-100 text-purple-700">2週間</button>
+                <div id="sub-camp" class="hidden mt-3 flex gap-2 justify-center bg-gray-50 p-2 rounded-lg">
+                    <button onclick="setCampF('')" class="px-3 py-1.5 rounded text-xs bg-gray-200 font-medium">全て</button>
+                    <button onclick="setCampF('4week')" class="px-3 py-1.5 rounded text-xs bg-amber-100 text-amber-700 font-bold border border-amber-200">4週間</button>
+                    <button onclick="setCampF('2week')" class="px-3 py-1.5 rounded text-xs bg-purple-100 text-purple-700 font-bold border border-purple-200">2週間</button>
                 </div>
-                <div id="sub-stat" class="hidden mt-3 flex flex-col gap-2 items-center">
-                    <button onclick="setStatF('')" class="px-4 py-1 rounded text-xs bg-gray-200 font-medium">全て表示</button>
+                <div id="sub-stat" class="hidden mt-3 flex flex-col gap-3 items-center bg-gray-50 p-2 rounded-lg">
+                    <button onclick="setStatF('')" class="px-4 py-1.5 rounded text-xs bg-gray-200 font-medium">全て表示</button>
                     <div id="stat-grp-4" class="text-center w-full">
-                         <div class="text-xs text-gray-500 mt-1">4週間体感</div>
+                         <div class="text-xs text-gray-500 mb-1 font-bold">4週間体感用</div>
                          <div class="flex gap-2 justify-center flex-wrap">
-                            <button onclick="setStatF('4-sampling')" class="px-3 py-1 rounded text-xs bg-blue-100 text-blue-700">サンプリング</button>
-                            <button onclick="setStatF('4-communication')" class="px-3 py-1 rounded text-xs bg-amber-100 text-amber-700">コミュニケーション</button>
-                            <button onclick="setStatF('4-acquired')" class="px-3 py-1 rounded text-xs bg-green-100 text-green-700">CP申込</button>
+                            <button onclick="setStatF('4-sampling')" class="px-3 py-1.5 rounded text-xs bg-blue-100 text-blue-700 font-medium">サンプリング</button>
+                            <button onclick="setStatF('4-communication')" class="px-3 py-1.5 rounded text-xs bg-amber-100 text-amber-700 font-medium">コミュニケーション</button>
+                            <button onclick="setStatF('4-acquired')" class="px-3 py-1.5 rounded text-xs bg-green-100 text-green-700 font-medium">CP申込</button>
                          </div>
                     </div>
                     <div id="stat-grp-2" class="text-center w-full">
-                        <div class="text-xs text-gray-500 mt-1">2週間無料</div>
+                        <div class="text-xs text-gray-500 mb-1 font-bold">2週間無料用</div>
                         <div class="flex gap-2 justify-center flex-wrap">
-                            <button onclick="setStatF('2-sampling')" class="px-3 py-1 rounded text-xs bg-purple-100 text-purple-700">1週間分お届け済</button>
-                            <button onclick="setStatF('2-communication')" class="px-3 py-1 rounded text-xs bg-purple-200 text-purple-800">2週間分お届け済</button>
+                            <button onclick="setStatF('2-sampling')" class="px-3 py-1.5 rounded text-xs bg-purple-100 text-purple-700 font-medium">1週間分お届け済</button>
+                            <button onclick="setStatF('2-communication')" class="px-3 py-1.5 rounded text-xs bg-purple-200 text-purple-800 font-medium">2週間分お届け済</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <div id="filter-display" class="hidden text-center text-xs text-white bg-blue-500 rounded-lg py-2 px-3"></div>
-            <div class="text-center text-gray-600 text-sm"><span id="cnt">0</span>件</div>
-            <div id="cards" class="space-y-3"></div>
-            <div class="bg-white rounded-xl shadow-md p-4 space-y-3">
-                <div class="text-center text-xs text-red-500 font-bold mb-1">⚠️ 業務終了後は必ず保存してください</div>
-                <button onclick="exportXL()" class="w-full bg-red-500 text-white font-bold py-4 rounded-lg shadow animate-pulse-slow">📊 データをExcelに保存 (バックアップ)</button>
-                <button onclick="confirmImport()" class="w-full bg-blue-500 text-white font-medium py-3 rounded-lg">📥 Excelから復元</button>
+            
+            <div id="filter-display" class="hidden text-center text-xs text-white bg-blue-500 rounded-lg py-2 px-3 font-bold shadow-sm"></div>
+            <div class="text-center text-gray-600 text-sm py-1"><span id="cnt">0</span>件 表示中</div>
+            <div id="cards" class="space-y-4 pb-4"></div>
+            
+            <div class="bg-white rounded-xl shadow-md p-5 space-y-4 border-2 border-red-100">
+                <div class="flex items-center gap-2 justify-center text-red-500 font-bold text-sm mb-1 animate-pulse">
+                    <span>⚠️</span><span>業務終了後は必ず保存してください</span>
+                </div>
+                <button onclick="exportXL()" class="w-full bg-red-500 text-white font-bold py-4 rounded-xl shadow-md hover:bg-red-600 transition flex items-center justify-center gap-2">
+                    <span>📥</span> データをExcelに保存 (バックアップ)
+                </button>
+                <button onclick="confirmImport()" class="w-full bg-blue-50 text-blue-600 font-bold py-3 rounded-xl border border-blue-200 hover:bg-blue-100">📤 Excelから復元</button>
                 <input type="file" id="imp-file" accept=".xlsx" class="hidden" onchange="importXL(event)">
             </div>
+            
             <details class="bg-gray-100 rounded-xl p-3 mt-4">
-                <summary class="text-gray-500 text-xs cursor-pointer">⚙️ その他の操作</summary>
-                <div class="mt-3 space-y-2">
-                    <button onclick="confirmRestoreSample()" class="w-full bg-amber-200 text-amber-900 text-sm py-2 rounded-lg">📋 見本データを作成</button>
-                    <button onclick="confirmDeleteAll()" class="w-full bg-gray-300 text-gray-600 text-sm py-2 rounded-lg">🗑️ 全データを削除</button>
+                <summary class="text-gray-500 text-xs cursor-pointer select-none">⚙️ その他の操作（見本データ等）</summary>
+                <div class="mt-4 space-y-3">
+                    <button onclick="confirmRestoreSample()" id="btn-sample" class="w-full bg-amber-200 text-amber-900 text-sm font-bold py-3 rounded-lg shadow-sm">📋 見本データを作成</button>
+                    <button onclick="confirmDeleteAll()" class="w-full bg-gray-300 text-gray-700 text-sm font-bold py-3 rounded-lg shadow-sm">🗑️ 全データを削除</button>
                 </div>
             </details>
         </div>
 
         <div id="scr-detail" class="hidden space-y-4">
-            <button onclick="backToList()" class="flex items-center gap-2 text-amber-600 font-medium">← 顧客一覧に戻る</button>
-            <div class="flex gap-2 flex-wrap"><span id="d-camp-badge" class="px-3 py-1 rounded-full text-xs font-medium"></span><span id="d-stat-badge" class="text-xs px-2 py-1 rounded-full"></span><span id="d-cont-badge" class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 hidden">🔄継続</span></div>
-            <div class="bg-white rounded-xl shadow-md p-5">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">👤 顧客情報</h2>
+            <button onclick="backToList()" class="flex items-center gap-2 text-amber-600 font-bold px-2 py-1 rounded hover:bg-amber-50">
+                <span class="text-lg">←</span> 顧客一覧に戻る
+            </button>
+            <div class="flex gap-2 flex-wrap items-center">
+                <span id="d-camp-badge" class="px-3 py-1 rounded-full text-xs font-bold shadow-sm"></span>
+                <span id="d-stat-badge" class="text-xs px-2 py-1 rounded-full font-bold shadow-sm"></span>
+                <span id="d-cont-badge" class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-700 font-bold shadow-sm hidden">🔄継続</span>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">👤 顧客情報</h2>
                 <div class="space-y-4">
-                    <div><label class="block text-sm font-medium text-gray-700 mb-2">キャンペーン</label>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">キャンペーン</label>
                         <div class="flex gap-2">
                             <label class="flex-1"><input type="radio" name="d-camp" value="4week" class="hidden peer" onchange="confirmCampChange(this,'4week')">
-                                <div class="peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 border-2 border-gray-300 rounded-lg py-2 text-center cursor-pointer text-sm">4週間</div></label>
+                                <div class="peer-checked:bg-amber-500 peer-checked:text-white peer-checked:border-amber-500 border-2 border-gray-300 rounded-lg py-2 text-center cursor-pointer text-sm font-bold transition">4週間</div></label>
                             <label class="flex-1"><input type="radio" name="d-camp" value="2week" class="hidden peer" onchange="confirmCampChange(this,'2week')">
-                                <div class="peer-checked:bg-purple-500 peer-checked:text-white peer-checked:border-purple-500 border-2 border-gray-300 rounded-lg py-2 text-center cursor-pointer text-sm">2週間</div></label>
+                                <div class="peer-checked:bg-purple-500 peer-checked:text-white peer-checked:border-purple-500 border-2 border-gray-300 rounded-lg py-2 text-center cursor-pointer text-sm font-bold transition">2週間</div></label>
                         </div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">顧客名</label>
-                        <input type="text" id="d-name" class="w-full border rounded-lg px-4 py-3" oninput="detDirty=true"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">よみがな</label>
-                        <input type="text" id="d-kana" class="w-full border rounded-lg px-4 py-3" oninput="detDirty=true"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
-                        <input type="text" id="d-addr" class="w-full border rounded-lg px-4 py-3" oninput="detDirty=true"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-2">対面者</label>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">顧客名</label>
+                        <input type="text" id="d-name" class="w-full border rounded-lg px-4 py-3 bg-gray-50" oninput="detDirty=true"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">よみがな</label>
+                        <input type="text" id="d-kana" class="w-full border rounded-lg px-4 py-3 bg-gray-50" oninput="detDirty=true"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">住所</label>
+                        <input type="text" id="d-addr" class="w-full border rounded-lg px-4 py-3 bg-gray-50" oninput="detDirty=true"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">対面者</label>
                         <div class="flex flex-wrap gap-2" id="d-contact">
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="奥" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">奥</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="旦那" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">旦那</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おば" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">おば</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おじ" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">おじ</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="子" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">子</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="奥" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">奥</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="旦那" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">旦那</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おば" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">おば</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="おじ" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">おじ</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="子" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">子</span></label>
                         </div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-2">ニーズ</label>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-2">ニーズ</label>
                         <div class="flex flex-wrap gap-2" id="d-needs">
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="便秘" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">便秘</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="下痢" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">下痢</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="睡眠" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">睡眠</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="ストレス" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">ストレス</span></label>
-                            <label class="cb-label cursor-pointer"><input type="checkbox" value="アレルギー" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm">アレルギー</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="便秘" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">便秘</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="下痢" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">下痢</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="睡眠" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">睡眠</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="ストレス" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">ストレス</span></label>
+                            <label class="cb-label cursor-pointer"><input type="checkbox" value="アレルギー" class="hidden" onchange="detDirty=true"><span class="choice inline-block border rounded-lg text-sm bg-white">アレルギー</span></label>
                         </div>
                     </div>
-                    <button onclick="saveCust()" class="w-full bg-amber-500 text-white font-bold py-3 rounded-xl">💾 顧客情報を保存</button>
+                    <button onclick="saveCust()" class="w-full bg-amber-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-amber-600 transition">💾 顧客情報を保存</button>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-5">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">📅 訪問履歴</h2>
+            <div class="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">📅 訪問履歴</h2>
                 <div id="visits" class="space-y-3"></div>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-5">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">➕ 訪問記録を追加</h2>
+            <div class="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">➕ 訪問記録を追加</h2>
                 <div class="space-y-4">
-                    <div id="week2-option" class="hidden bg-purple-50 p-4 rounded-xl border-2 border-purple-200 text-center">
-                        <p class="text-purple-800 font-bold mb-2">📦 2週目お届けですか？</p>
-                        <button onclick="addWeek2Visit()" class="w-full bg-purple-600 text-white font-bold py-3 rounded-lg shadow">はい、2週目お届け完了</button>
+                    <div id="week2-option" class="hidden bg-purple-50 p-5 rounded-xl border-2 border-purple-200 text-center shadow-sm">
+                        <p class="text-purple-800 font-bold mb-3 text-lg">📦 2週目お届けですか？</p>
+                        <button onclick="addWeek2Visit()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-md active:scale-95 transition">はい、2週目お届け完了</button>
                     </div>
                     
                     <div id="week2-done" class="hidden">
-                        <div class="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div class="p-4 bg-purple-50 border-l-4 border-purple-500 rounded-r-lg shadow-sm">
                             <div class="flex justify-between items-start mb-2">
-                                <div class="text-purple-700 font-bold">📦 2週目お届け済み</div>
-                                <button onclick="editWeek2()" class="text-blue-500 text-sm px-2 py-1 rounded hover:bg-blue-50">編集</button>
+                                <div class="text-purple-800 font-bold">📦 2週目お届け済み</div>
+                                <button onclick="editWeek2()" class="text-purple-600 text-xs px-2 py-1 rounded border border-purple-200 bg-white font-bold">編集</button>
                             </div>
-                            <div class="text-purple-600 text-sm" id="w2-done-date"></div>
+                            <div class="text-purple-700 text-sm font-medium" id="w2-done-date"></div>
                             <div class="text-purple-600 text-sm mt-1" id="w2-done-memo"></div>
                         </div>
                     </div>
 
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
-                        <div class="flex items-center gap-2">
-                            <button onclick="chgDate('d-vdate',-1);updWeekdayDisp('d-vdate','d-vweekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
-                            <input type="date" id="d-vdate" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('d-vdate','d-vweekday')">
-                            <button onclick="chgDate('d-vdate',1);updWeekdayDisp('d-vdate','d-vweekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">▶</button>
-                            <span id="d-vweekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-bold text-gray-700 mb-1">訪問日</label>
+                            <div class="flex items-center gap-1">
+                                <button onclick="chgDate('d-vdate',-1);updWeekdayDisp('d-vdate','d-vweekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg hover:bg-gray-200">◀</button>
+                                <input type="date" id="d-vdate" class="flex-1 border rounded-lg px-1 py-2 text-center bg-gray-50" onchange="updWeekdayDisp('d-vdate','d-vweekday');checkFutureDate('d-vdate')">
+                                <button onclick="chgDate('d-vdate',1);updWeekdayDisp('d-vdate','d-vweekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg hover:bg-gray-200">▶</button>
+                            </div>
+                            <div id="d-vweekday" class="text-center text-xs text-gray-500 mt-1 font-bold"></div>
                         </div>
+                        <div><label class="block text-sm font-bold text-gray-700 mb-1">時刻</label>
+                            <select id="d-vtime" class="w-full border rounded-lg px-2 py-2 bg-gray-50"></select></div>
                     </div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
-                        <select id="d-vtime" class="w-full border rounded-lg px-3 py-2"></select></div>
+
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
-                        <textarea id="d-vmemo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3"></textarea>
-                        <div class="flex gap-2 mt-2 flex-wrap">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">メモ</label>
+                        <textarea id="d-vmemo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                        <div class="flex gap-2 mt-3 flex-wrap">
                             <span class="chip" onclick="addMemoTag('d-vmemo','【不在】')">【不在】</span>
                             <span class="chip" onclick="addMemoTag('d-vmemo','興味あり')">興味あり</span>
                             <span class="chip" onclick="addMemoTag('d-vmemo','憩い')">憩い</span>
@@ -355,147 +394,151 @@
                         </div>
                     </div>
                     
-                    <div class="flex gap-2">
-                        <button onclick="addVisit(true)" class="flex-1 bg-gray-400 text-white font-medium py-3 rounded-lg">🚪 不在</button>
-                        <button onclick="addVisit(false)" id="add-v-btn" class="flex-[2] bg-blue-500 text-white font-medium py-3 rounded-lg">📝 訪問記録を追加</button>
+                    <div class="flex gap-3">
+                        <button onclick="addVisit(true)" class="flex-1 bg-gray-400 text-white font-bold py-3 rounded-xl shadow-sm hover:bg-gray-500">🚪 不在</button>
+                        <button onclick="addVisit(false)" id="add-v-btn" class="flex-[2] bg-blue-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-600">📝 追加する</button>
                     </div>
                 </div>
             </div>
             
-            <div id="acq-section" class="bg-white rounded-xl shadow-md p-5">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">🎯 CP申込ステータス</h2>
+            <div id="acq-section" class="bg-white rounded-xl shadow-md p-5 border border-green-50">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">🎯 CP申込ステータス</h2>
                 <div id="acq-no">
-                    <p class="text-gray-600 mb-3">まだCP申込されていません</p>
-                    <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">申込日</label>
+                    <p class="text-gray-500 mb-4 text-center bg-gray-50 py-3 rounded-lg text-sm">まだCP申込されていません</p>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold text-gray-700 mb-1">申込日</label>
                         <div class="flex items-center gap-2">
-                            <button onclick="chgDate('acq-date-input',-1);updWeekdayDisp('acq-date-input','acq-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">◀</button>
-                            <input type="date" id="acq-date-input" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('acq-date-input','acq-weekday')">
-                            <button onclick="chgDate('acq-date-input',1);updWeekdayDisp('acq-date-input','acq-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">▶</button>
-                            <span id="acq-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                            <button onclick="chgDate('acq-date-input',-1);updWeekdayDisp('acq-date-input','acq-weekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg">◀</button>
+                            <input type="date" id="acq-date-input" class="flex-1 border rounded-lg px-3 py-2 text-center bg-gray-50" onchange="updWeekdayDisp('acq-date-input','acq-weekday')">
+                            <button onclick="chgDate('acq-date-input',1);updWeekdayDisp('acq-date-input','acq-weekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg">▶</button>
                         </div>
+                        <div id="acq-weekday" class="text-center text-xs text-gray-500 mt-1 font-bold"></div>
                     </div>
-                    <button onclick="markAcq()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl">🎉 CP申込済みにする</button>
+                    <button onclick="markAcq()" class="w-full bg-green-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-green-600 transition transform active:scale-[0.98]">🎉 CP申込済みにする</button>
                 </div>
                 <div id="acq-yes" class="hidden">
-                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
-                        <div class="text-green-700 font-bold mb-2">🎉 CP申込済み</div>
+                    <div class="bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4 mb-4 shadow-sm">
+                        <div class="text-green-800 font-bold mb-3 flex items-center gap-2"><span class="text-xl">🎉</span> CP申込済み</div>
                         <div class="flex items-center gap-2">
-                            <button onclick="chgAcqDate(-1)" class="w-8 h-8 bg-green-100 rounded text-sm">◀</button>
-                            <input type="date" id="acq-date-edit" class="flex-1 border border-green-300 rounded px-2 py-1 text-center text-sm" onchange="saveAcqDate();updWeekdayDisp('acq-date-edit','acq-weekday-edit')">
-                            <button onclick="chgAcqDate(1)" class="w-8 h-8 bg-green-100 rounded text-sm">▶</button>
-                            <span id="acq-weekday-edit" class="text-green-600 font-medium w-8 text-center text-sm"></span>
+                            <button onclick="chgAcqDate(-1)" class="w-8 h-8 bg-white border border-green-200 rounded text-green-600">◀</button>
+                            <input type="date" id="acq-date-edit" class="flex-1 border border-green-300 rounded px-2 py-1 text-center text-sm bg-white" onchange="saveAcqDate();updWeekdayDisp('acq-date-edit','acq-weekday-edit')">
+                            <button onclick="chgAcqDate(1)" class="w-8 h-8 bg-white border border-green-200 rounded text-green-600">▶</button>
                         </div>
+                        <div id="acq-weekday-edit" class="text-center text-xs text-green-600 mt-1 font-bold"></div>
                     </div>
-                    <button onclick="cancelAcq()" class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-sm mb-3">CP申込を取り消す</button>
-                    <div class="border-t pt-3 mt-3">
-                        <h3 class="font-medium text-gray-700 mb-2">継続ステータス</h3>
+                    <button onclick="cancelAcq()" class="w-full bg-white text-gray-500 border border-gray-300 py-2 rounded-lg text-sm mb-5 font-medium hover:bg-gray-50">申込を取り消す</button>
+                    
+                    <div class="border-t-2 border-dashed border-gray-200 pt-5">
+                        <h3 class="font-bold text-gray-700 mb-3 flex items-center gap-2">🔄 継続ステータス</h3>
                         <div id="cont-no">
-                            <p class="text-gray-500 text-sm mb-2">まだ継続されていません</p>
-                            <div class="mb-2">
+                            <div class="mb-3">
                                 <div class="flex items-center gap-2">
-                                    <button onclick="chgDate('cont-date-input',-1);updWeekdayDisp('cont-date-input','cont-weekday')" class="w-8 h-8 bg-gray-100 rounded text-sm">◀</button>
-                                    <input type="date" id="cont-date-input" class="flex-1 border rounded px-2 py-1 text-center text-sm" onchange="updWeekdayDisp('cont-date-input','cont-weekday')">
-                                    <button onclick="chgDate('cont-date-input',1);updWeekdayDisp('cont-date-input','cont-weekday')" class="w-8 h-8 bg-gray-100 rounded text-sm">▶</button>
-                                    <span id="cont-weekday" class="text-gray-600 font-medium w-8 text-center text-sm"></span>
+                                    <button onclick="chgDate('cont-date-input',-1);updWeekdayDisp('cont-date-input','cont-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg">◀</button>
+                                    <input type="date" id="cont-date-input" class="flex-1 border rounded px-2 py-2 text-center text-sm bg-gray-50" onchange="updWeekdayDisp('cont-date-input','cont-weekday')">
+                                    <button onclick="chgDate('cont-date-input',1);updWeekdayDisp('cont-date-input','cont-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg">▶</button>
                                 </div>
+                                <div id="cont-weekday" class="text-center text-xs text-gray-500 mt-1 font-bold"></div>
                             </div>
-                            <button onclick="markCont()" class="w-full bg-blue-500 text-white font-medium py-2 rounded-lg">🔄 継続済みにする</button>
+                            <button onclick="markCont()" class="w-full bg-indigo-500 text-white font-bold py-2 rounded-xl shadow hover:bg-indigo-600">🔄 継続済みにする</button>
                         </div>
                         <div id="cont-yes" class="hidden">
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-                                <div class="text-blue-700 font-bold text-sm mb-1">🔄 継続済み</div>
+                            <div class="bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg p-3 mb-3 shadow-sm">
+                                <div class="text-indigo-800 font-bold text-sm mb-2">🔄 継続済み</div>
                                 <div class="flex items-center gap-2">
-                                    <button onclick="chgContDate(-1)" class="w-8 h-8 bg-blue-100 rounded text-sm">◀</button>
-                                    <input type="date" id="cont-date-edit" class="flex-1 border border-blue-300 rounded px-2 py-1 text-center text-sm" onchange="saveContDate();updWeekdayDisp('cont-date-edit','cont-weekday-edit')">
-                                    <button onclick="chgContDate(1)" class="w-8 h-8 bg-blue-100 rounded text-sm">▶</button>
-                                    <span id="cont-weekday-edit" class="text-blue-600 font-medium w-8 text-center text-sm"></span>
+                                    <button onclick="chgContDate(-1)" class="w-8 h-8 bg-white border border-indigo-200 rounded text-indigo-600">◀</button>
+                                    <input type="date" id="cont-date-edit" class="flex-1 border border-indigo-300 rounded px-2 py-1 text-center text-sm bg-white" onchange="saveContDate();updWeekdayDisp('cont-date-edit','cont-weekday-edit')">
+                                    <button onclick="chgContDate(1)" class="w-8 h-8 bg-white border border-indigo-200 rounded text-indigo-600">▶</button>
                                 </div>
+                                <div id="cont-weekday-edit" class="text-center text-xs text-indigo-600 mt-1 font-bold"></div>
                             </div>
-                            <button onclick="cancelCont()" class="w-full bg-gray-200 text-gray-600 py-1 rounded-lg text-xs">継続を取り消す</button>
+                            <button onclick="cancelCont()" class="w-full bg-white text-gray-500 border border-gray-300 py-1 rounded-lg text-xs font-medium hover:bg-gray-50">継続を取り消す</button>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div id="cont2-section" class="bg-white rounded-xl shadow-md p-5 hidden">
-                <h2 class="text-lg font-bold text-gray-800 mb-4">🔄 継続ステータス</h2>
+            <div id="cont2-section" class="bg-white rounded-xl shadow-md p-5 hidden border border-indigo-50">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">🔄 継続ステータス</h2>
                 <div id="cont2-no">
-                    <p class="text-gray-600 mb-3">まだ継続されていません</p>
+                    <p class="text-gray-500 mb-4 text-center bg-gray-50 py-3 rounded-lg text-sm">まだ継続されていません</p>
                     <div class="mb-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">継続日</label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">継続日</label>
                         <div class="flex items-center gap-2">
-                            <button onclick="chgDate('cont2-date-input',-1);updWeekdayDisp('cont2-date-input','cont2-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">◀</button>
-                            <input type="date" id="cont2-date-input" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('cont2-date-input','cont2-weekday')">
-                            <button onclick="chgDate('cont2-date-input',1);updWeekdayDisp('cont2-date-input','cont2-weekday')" class="w-10 h-10 bg-gray-100 rounded-lg text-lg">▶</button>
-                            <span id="cont2-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                            <button onclick="chgDate('cont2-date-input',-1);updWeekdayDisp('cont2-date-input','cont2-weekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg">◀</button>
+                            <input type="date" id="cont2-date-input" class="flex-1 border rounded-lg px-3 py-2 text-center bg-gray-50" onchange="updWeekdayDisp('cont2-date-input','cont2-weekday')">
+                            <button onclick="chgDate('cont2-date-input',1);updWeekdayDisp('cont2-date-input','cont2-weekday')" class="w-10 h-12 bg-gray-100 rounded-lg text-lg">▶</button>
                         </div>
+                        <div id="cont2-weekday" class="text-center text-xs text-gray-500 mt-1 font-bold"></div>
                     </div>
-                    <button onclick="markCont2()" class="w-full bg-blue-500 text-white font-bold py-3 rounded-xl">🔄 継続済みにする</button>
+                    <button onclick="markCont2()" class="w-full bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-md hover:bg-indigo-600">🔄 継続済みにする</button>
                 </div>
                 <div id="cont2-yes" class="hidden">
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
-                        <div class="text-blue-700 font-bold mb-2">🔄 継続済み</div>
+                    <div class="bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg p-4 mb-3 shadow-sm">
+                        <div class="text-indigo-800 font-bold mb-2">🔄 継続済み</div>
                         <div class="flex items-center gap-2">
-                            <button onclick="chgCont2Date(-1)" class="w-8 h-8 bg-blue-100 rounded text-sm">◀</button>
-                            <input type="date" id="cont2-date-edit" class="flex-1 border border-blue-300 rounded px-2 py-1 text-center text-sm" onchange="saveCont2Date();updWeekdayDisp('cont2-date-edit','cont2-weekday-edit')">
-                            <button onclick="chgCont2Date(1)" class="w-8 h-8 bg-blue-100 rounded text-sm">▶</button>
-                            <span id="cont2-weekday-edit" class="text-blue-600 font-medium w-8 text-center text-sm"></span>
+                            <button onclick="chgCont2Date(-1)" class="w-8 h-8 bg-white border border-indigo-200 rounded text-indigo-600">◀</button>
+                            <input type="date" id="cont2-date-edit" class="flex-1 border border-indigo-300 rounded px-2 py-1 text-center text-sm bg-white" onchange="saveCont2Date();updWeekdayDisp('cont2-date-edit','cont2-weekday-edit')">
+                            <button onclick="chgCont2Date(1)" class="w-8 h-8 bg-white border border-indigo-200 rounded text-indigo-600">▶</button>
                         </div>
+                        <div id="cont2-weekday-edit" class="text-center text-xs text-indigo-600 mt-1 font-bold"></div>
                     </div>
-                    <button onclick="cancelCont2()" class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg text-sm">継続を取り消す</button>
+                    <button onclick="cancelCont2()" class="w-full bg-white text-gray-500 border border-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">継続を取り消す</button>
                 </div>
             </div>
             
-            <button onclick="backToList()" class="w-full bg-gray-100 text-gray-600 font-medium py-3 rounded-xl">← 顧客一覧に戻る</button>
-            <button onclick="delCust()" class="w-full bg-red-100 text-red-600 font-medium py-3 rounded-xl">🗑️ この顧客を削除</button>
+            <button onclick="backToList()" class="w-full bg-gray-100 text-gray-600 font-bold py-3 rounded-xl hover:bg-gray-200 border border-gray-300">← 顧客一覧に戻る</button>
+            <button onclick="delCust()" class="w-full bg-red-50 text-red-600 font-bold py-3 rounded-xl border border-red-200 mt-4 hover:bg-red-100">🗑️ この顧客を削除</button>
         </div>
 
         <div id="scr-progress" class="hidden space-y-4">
-            <button onclick="showScreen('list')" class="flex items-center gap-2 text-amber-600 font-medium">← 顧客一覧に戻る</button>
+            <button onclick="showScreen('list')" class="flex items-center gap-2 text-amber-600 font-bold px-2 py-1 rounded hover:bg-amber-50">
+                <span class="text-lg">←</span> 顧客一覧に戻る
+            </button>
             <h2 class="text-xl font-bold text-gray-800">📊 進捗状況</h2>
-            <div class="bg-white rounded-xl shadow-md p-5">
-                <h3 class="font-bold text-amber-700 mb-4">🟠 4週間体感キャンペーン</h3>
-                <div class="space-y-3">
-                    <div><div class="flex justify-between text-sm mb-1"><span>サンプリング</span><span><span id="p4-samp">0</span>/<span id="p4-goal-disp">80</span>軒</span></div>
+            <div class="bg-white rounded-xl shadow-md p-5 border border-amber-100">
+                <h3 class="font-bold text-amber-800 mb-4 border-b pb-2">🟠 4週間体感キャンペーン</h3>
+                <div class="space-y-4">
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>サンプリング</span><span><span id="p4-samp">0</span>/<span id="p4-goal-disp">80</span>軒</span></div>
                         <div class="prog-bar"><div id="p4-samp-bar" class="prog-fill bg-blue-500" style="width:0%"></div></div></div>
-                    <div><div class="flex justify-between text-sm mb-1"><span>コミュニケーション</span><span><span id="p4-comm">0</span>/<span id="p4-samp2">0</span>軒</span></div>
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>コミュニケーション</span><span><span id="p4-comm">0</span>/<span id="p4-samp2">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p4-comm-bar" class="prog-fill bg-amber-500" style="width:0%"></div></div></div>
-                    <div><div class="flex justify-between text-sm mb-1"><span>CP申込</span><span><span id="p4-acq">0</span>/<span id="p4-comm2">0</span>軒</span></div>
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>CP申込</span><span><span id="p4-acq">0</span>/<span id="p4-comm2">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p4-acq-bar" class="prog-fill bg-green-500" style="width:0%"></div></div></div>
-                    <div><div class="flex justify-between text-sm mb-1"><span>継続</span><span><span id="p4-cont">0</span>/<span id="p4-acq2">0</span>軒</span></div>
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>継続</span><span><span id="p4-cont">0</span>/<span id="p4-acq2">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p4-cont-bar" class="prog-fill bg-indigo-500" style="width:0%"></div></div></div>
                 </div>
             </div>
-            <div class="bg-white rounded-xl shadow-md p-5">
-                <h3 class="font-bold text-purple-700 mb-4">🟣 2週間無料キャンペーン</h3>
-                <div class="space-y-3">
-                    <div><div class="flex justify-between text-sm mb-1"><span>登録(CP申込)</span><span><span id="p2-acq">0</span>/<span id="p2-goal-disp">50</span>軒</span></div>
+            <div class="bg-white rounded-xl shadow-md p-5 border border-purple-100">
+                <h3 class="font-bold text-purple-800 mb-4 border-b pb-2">🟣 2週間無料キャンペーン</h3>
+                <div class="space-y-4">
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>登録(CP申込)</span><span><span id="p2-acq">0</span>/<span id="p2-goal-disp">50</span>軒</span></div>
                         <div class="prog-bar"><div id="p2-acq-bar" class="prog-fill bg-purple-500" style="width:0%"></div></div></div>
-                    <div><div class="flex justify-between text-sm mb-1"><span>2週目お届け</span><span><span id="p2-w2">0</span>/<span id="p2-acq2">0</span>軒</span></div>
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>2週目お届け</span><span><span id="p2-w2">0</span>/<span id="p2-acq2">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p2-w2-bar" class="prog-fill bg-pink-500" style="width:0%"></div></div></div>
-                    <div><div class="flex justify-between text-sm mb-1"><span>継続</span><span><span id="p2-cont">0</span>/<span id="p2-acq3">0</span>軒</span></div>
+                    <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>継続</span><span><span id="p2-cont">0</span>/<span id="p2-acq3">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p2-cont-bar" class="prog-fill bg-indigo-500" style="width:0%"></div></div></div>
                 </div>
             </div>
-            <div class="bg-amber-100 rounded-xl p-5">
-                <h3 class="font-bold text-amber-800 mb-3">🌻 全体</h3>
+            <div class="bg-amber-100 rounded-xl p-5 shadow-inner">
+                <h3 class="font-bold text-amber-900 mb-3">🌻 全体実績</h3>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white rounded-lg p-3 text-center"><div class="text-2xl font-bold text-amber-600" id="p-all">0</div><div class="text-xs text-gray-500">総登録</div></div>
-                    <div class="bg-white rounded-lg p-3 text-center"><div class="text-2xl font-bold text-green-600" id="p-all-acq">0</div><div class="text-xs text-gray-500">総CP申込</div></div>
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm"><div class="text-3xl font-bold text-amber-600" id="p-all">0</div><div class="text-xs text-gray-500 font-bold">総登録</div></div>
+                    <div class="bg-white rounded-lg p-3 text-center shadow-sm"><div class="text-3xl font-bold text-green-600" id="p-all-acq">0</div><div class="text-xs text-gray-500 font-bold">総CP申込</div></div>
                 </div>
             </div>
             <details class="bg-gray-100 rounded-xl p-3">
-                <summary class="text-gray-500 text-xs cursor-pointer">⚙️ 目標設定</summary>
+                <summary class="text-gray-500 text-xs cursor-pointer select-none font-bold">⚙️ 目標設定</summary>
                 <div class="mt-3 space-y-3">
-                    <div><label class="block text-sm text-gray-600 mb-1">4週間体感 サンプリング目標</label>
-                        <input type="number" id="goal-4week" value="80" min="1" class="w-full border rounded-lg px-3 py-2 text-center" onchange="saveGoals()"></div>
-                    <div><label class="block text-sm text-gray-600 mb-1">2週間無料 CP申込目標</label>
-                        <input type="number" id="goal-2week" value="50" min="1" class="w-full border rounded-lg px-3 py-2 text-center" onchange="saveGoals()"></div>
+                    <div><label class="block text-sm text-gray-700 font-bold mb-1">4週間体感 サンプリング目標</label>
+                        <input type="number" id="goal-4week" value="80" min="1" class="w-full border rounded-lg px-3 py-2 text-center bg-white" onchange="saveGoals()"></div>
+                    <div><label class="block text-sm text-gray-700 font-bold mb-1">2週間無料 CP申込目標</label>
+                        <input type="number" id="goal-2week" value="50" min="1" class="w-full border rounded-lg px-3 py-2 text-center bg-white" onchange="saveGoals()"></div>
                 </div>
             </details>
         </div>
     </main>
+
+    <button id="go-top" onclick="window.scrollTo({top:0, behavior:'smooth'})" class="fixed bottom-4 right-4 bg-gray-800/80 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl z-40 backdrop-blur">↑</button>
 
 <script>
 let data=JSON.parse(localStorage.getItem('cdata')||'[]');
@@ -510,6 +553,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     setToday();
     loadGoals();
     migrate();
+    
+    // スクロール検知でトップへ戻るボタン表示
+    window.addEventListener('scroll', () => {
+        const btn = document.getElementById('go-top');
+        if (window.scrollY > 300) btn.classList.add('visible');
+        else btn.classList.remove('visible');
+    });
 });
 
 function migrate(){let s=false;data.forEach(c=>{if(!c.campaign){c.campaign='4week';s=true;}if(!c.status){c.status='sampling';s=true;}if(c.acquired===undefined){c.acquired=false;s=true;}if(!c.kana){c.kana='';s=true;}if(c.continued===undefined){c.continued=false;s=true;}if(c.week2Delivered===undefined){c.week2Delivered=false;s=true;}});if(s)save();}
@@ -531,13 +581,31 @@ function initTimes(){
 }
 
 function setToday(){const t=new Date().toISOString().split('T')[0];['r-date','d-vdate','acq-date-input','cont-date-input','cont2-date-input'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});updWeekdayDisp('r-date','r-weekday');updWeekdayDisp('d-vdate','d-vweekday');updWeekdayDisp('acq-date-input','acq-weekday');updWeekdayDisp('cont-date-input','cont-weekday');updWeekdayDisp('cont2-date-input','cont2-weekday');}
-function chgDate(id,d){const e=document.getElementById(id),dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];}
+function chgDate(id,d){const e=document.getElementById(id),dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];
+    e.dispatchEvent(new Event('change')); // Trigger change for weekday/future check
+}
+function checkFutureDate(id){
+    const e=document.getElementById(id);
+    if(!e.value)return;
+    const d=new Date(e.value);
+    const today=new Date();
+    today.setHours(0,0,0,0);
+    if(d > today){
+        toast('⚠️ 未来の日付が選択されています','📅');
+    }
+}
 function esc(t){if(!t)return'';const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
-function showScreen(s){['register','list','detail','progress'].forEach(x=>document.getElementById('scr-'+x).classList.add('hidden'));document.getElementById('scr-'+s).classList.remove('hidden');document.getElementById('tab-reg').className='flex-1 py-3 text-center font-medium text-sm rounded-t-lg '+(s==='register'?'tab-active':'tab-inactive');document.getElementById('tab-list').className='flex-1 py-3 text-center font-medium text-sm rounded-t-lg '+(s!=='register'?'tab-active':'tab-inactive');if(s==='list')render();if(s==='progress')updProg();}
+function showScreen(s){
+    // 検索クリアロジック（オプション：画面遷移でクリアするか？今回は維持するが、リストに戻った時にレンダリングは走らせる）
+    ['register','list','detail','progress'].forEach(x=>document.getElementById('scr-'+x).classList.add('hidden'));document.getElementById('scr-'+s).classList.remove('hidden');document.getElementById('tab-reg').className='flex-1 py-3 text-center font-bold text-sm rounded-t-lg '+(s==='register'?'tab-active shadow-sm border-t border-x border-amber-200':'tab-inactive border-t border-x border-transparent');document.getElementById('tab-list').className='flex-1 py-3 text-center font-bold text-sm rounded-t-lg '+(s!=='register'?'tab-active shadow-sm border-t border-x border-amber-200':'tab-inactive border-t border-x border-transparent');
+    if(s==='list')render();
+    if(s==='progress')updProg();
+    window.scrollTo(0,0);
+}
 function gotoTab(s){if(formDirty&&curScr()==='register'){showCf('確認','入力を破棄しますか？',r=>{if(r){formDirty=false;clrForm();showScreen(s);}},'⚠️','破棄','bg-red-500');return;}if(detDirty&&curScr()==='detail'){showCf('確認','変更を破棄しますか？',r=>{if(r){detDirty=false;showScreen(s);}},'⚠️','破棄','bg-red-500');return;}showScreen(s);}
 function curScr(){if(!document.getElementById('scr-register').classList.contains('hidden'))return'register';if(!document.getElementById('scr-list').classList.contains('hidden'))return'list';if(!document.getElementById('scr-detail').classList.contains('hidden'))return'detail';return'progress';}
 function backToList(){if(detDirty){showCf('確認','変更を破棄しますか？',r=>{if(r){detDirty=false;showScreen('list');}},'⚠️','破棄','bg-red-500');return;}showScreen('list');}
-function showCf(t,m,cb,i='⚠️',ok='OK',cls='bg-amber-500'){document.getElementById('cf-title').textContent=t;document.getElementById('cf-msg').textContent=m;document.getElementById('cf-icon').textContent=i;document.getElementById('cf-ok').textContent=ok;document.getElementById('cf-ok').className='flex-1 py-3 '+cls+' text-white rounded-lg font-medium';cfCb=cb;document.getElementById('confirm-modal').classList.remove('hidden');}
+function showCf(t,m,cb,i='⚠️',ok='OK',cls='bg-amber-500'){document.getElementById('cf-title').textContent=t;document.getElementById('cf-msg').textContent=m;document.getElementById('cf-icon').textContent=i;document.getElementById('cf-ok').textContent=ok;document.getElementById('cf-ok').className='flex-1 py-3 '+cls+' text-white rounded-lg font-bold shadow-md';cfCb=cb;document.getElementById('confirm-modal').classList.remove('hidden');}
 function closeConfirm(r){document.getElementById('confirm-modal').classList.add('hidden');if(cfCb){const cb=cfCb;cfCb=null;setTimeout(()=>cb(r),100);}}
 function getChk(id){return Array.from(document.getElementById(id).querySelectorAll('input:checked')).map(x=>x.value);}
 function setChk(id,v){const vs=v?v.split(', '):[];document.querySelectorAll('#'+id+' input').forEach(x=>x.checked=vs.includes(x.value));updChkStyle(id);}
@@ -559,14 +627,8 @@ function regCustomer(){
 }
 
 function clrForm(){
-    // キャンペーン選択状態を維持するため、現在の選択値を取得
-    const curCamp = document.querySelector('input[name="r-camp"]:checked').value;
-    
+    // キャンペーン選択状態維持
     document.getElementById('r-name').value='';document.getElementById('r-kana').value='';document.getElementById('r-addr').value='';document.getElementById('r-memo').value='';document.querySelectorAll('#r-contact input,#r-needs input').forEach(x=>x.checked=false);
-    
-    // リセット後に再適用（またはリセット対象から除外）
-    // document.querySelector('input[name="r-camp"][value="4week"]').checked=true; // ←この行を削除
-    
     setToday();updChkStyle('r-contact');updChkStyle('r-needs');
 }
 
@@ -579,12 +641,12 @@ function render(){
     f.sort((a,b)=>b.id-a.id);
     document.getElementById('cnt').textContent=f.length;
     const cont=document.getElementById('cards');
-    if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg">新規登録</button></div>';return;}
-    if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl">該当なし</div>';return;}
-    cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px]">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');
+    if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2 font-bold">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-3 rounded-lg font-bold shadow">新規登録</button></div>';return;}
+    if(f.length===0){cont.innerHTML='<div class="text-center text-gray-500 py-8 bg-white rounded-xl font-bold">該当なし</div>';return;}
+    cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600 font-bold">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600 font-bold">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600 font-bold">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 font-bold">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer border border-gray-100" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px] text-lg">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600 space-y-1">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div><div class="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 line-clamp-2">${c.visitHistory.length>0?esc(c.visitHistory[c.visitHistory.length-1].memo):'メモなし'}</div></div>`;}).join('');
 }
 
-function statBadge(s,camp,acq){if(camp==='2week'){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp2">1週間分お届け済</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm2">2週間分お届け済</span>'};return m[s]||'';}if(acq)return'<span class="text-xs px-2 py-1 rounded-full st-acq">🎉CP申込</span>';const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm">コミュニケーション</span>'};return m[s]||'';}
+function statBadge(s,camp,acq){if(camp==='2week'){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp2 font-bold">1週間分お届け済</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm2 font-bold">2週間分お届け済</span>'};return m[s]||'';}if(acq)return'<span class="text-xs px-2 py-1 rounded-full st-acq font-bold">🎉CP申込</span>';const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp font-bold">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm font-bold">コミュニケーション</span>'};return m[s]||'';}
 function matchKana(t,f){if(!t)return f==='他';const c=t.charAt(0);const r={あ:/^[あいうえおアイウエオぁ-ぉ]/,か:/^[かきくけこカキクケコが-ご]/,さ:/^[さしすせそサシスセソざ-ぞ]/,た:/^[たちつてとタチツテトだ-ど]/,な:/^[なにぬねのナニヌネノ]/,は:/^[はひふへほハヒフヘホば-ぼぱ-ぽ]/,ま:/^[まみむめもマミムメモ]/,や:/^[やゆよヤユヨ]/,ら:/^[らりるれろラリルレロ]/,わ:/^[わをんワヲン]/};if(f==='他'){for(const x of Object.values(r))if(x.test(c))return false;return true;}return r[f]&&r[f].test(c);}
 function daysSince(c){if(!c.visitHistory||c.visitHistory.length===0)return-1;const lv=c.visitHistory.reduce((l,v)=>{const d=new Date(v.date);return d>l?d:l;},new Date(0));return Math.floor((new Date()-lv)/(1000*60*60*24));}
 function updSum(){document.getElementById('sum-total').textContent=data.length;}
@@ -604,12 +666,12 @@ function clearAllFilters(){fCamp='';fStat='';fFollow=false;fKana='';document.get
 
 function showDet(id){
     curId=id;const c=data.find(x=>x.id===id);if(!c)return;
-    const cb=document.getElementById('d-camp-badge');cb.textContent=c.campaign==='4week'?'4週間体感':'2週間無料';cb.className='px-3 py-1 rounded-full text-xs font-medium '+(c.campaign==='4week'?'bg-amber-100 text-amber-700':'bg-purple-100 text-purple-700');updStatBadge(c.status,c.campaign);
+    const cb=document.getElementById('d-camp-badge');cb.textContent=c.campaign==='4week'?'4週間体感':'2週間無料';cb.className='px-3 py-1 rounded-full text-xs font-bold '+(c.campaign==='4week'?'bg-amber-100 text-amber-700':'bg-purple-100 text-purple-700');updStatBadge(c.status,c.campaign);
     document.querySelector(`input[name="d-camp"][value="${c.campaign}"]`).checked=true;
     document.getElementById('d-name').value=c.name||'';document.getElementById('d-kana').value=c.kana||'';document.getElementById('d-addr').value=c.address||'';setChk('d-contact',c.contact);setChk('d-needs',c.needs);updAcqUI(c);updContUI(c);updCampUI();renderVisits(c);setToday();initTimes();document.getElementById('d-vmemo').value='';detDirty=false;showScreen('detail');
 }
 
-function updStatBadge(s,camp){const b=document.getElementById('d-stat-badge');if(camp==='2week'){const m={sampling:{text:'1週間分お届け済',cls:'st-samp2'},communication:{text:'2週間分お届け済',cls:'st-comm2'}};const info=m[s]||{text:'',cls:''};b.textContent=info.text;b.className='text-xs px-2 py-1 rounded-full '+info.cls;return;}const m={sampling:{text:'サンプリング',cls:'st-samp'},communication:{text:'コミュニケーション',cls:'st-comm'},acquired:{text:'CP申込',cls:'st-acq'}};const info=m[s]||{text:'',cls:''};b.textContent=info.text;b.className='text-xs px-2 py-1 rounded-full '+info.cls;}
+function updStatBadge(s,camp){const b=document.getElementById('d-stat-badge');if(camp==='2week'){const m={sampling:{text:'1週間分お届け済',cls:'st-samp2'},communication:{text:'2週間分お届け済',cls:'st-comm2'}};const info=m[s]||{text:'',cls:''};b.textContent=info.text;b.className='text-xs px-2 py-1 rounded-full font-bold '+info.cls;return;}const m={sampling:{text:'サンプリング',cls:'st-samp'},communication:{text:'コミュニケーション',cls:'st-comm'},acquired:{text:'CP申込',cls:'st-acq'}};const info=m[s]||{text:'',cls:''};b.textContent=info.text;b.className='text-xs px-2 py-1 rounded-full font-bold '+info.cls;}
 
 let prevCamp='';
 function confirmCampChange(el,newCamp){const c=data.find(x=>x.id===curId);if(!c)return;if(c.campaign===newCamp){updCampUI();return;}const fromName=c.campaign==='4week'?'4週間体感':'2週間無料';const toName=newCamp==='4week'?'4週間体感':'2週間無料';showCf('キャンペーン変更',`「${fromName}」から「${toName}」に変更しますか？\n\n※通常、キャンペーンの変更は行いません。\n誤登録の修正のみ行ってください。`,r=>{if(r){detDirty=true;updCampUI();}else{document.querySelector(`input[name="d-camp"][value="${c.campaign}"]`).checked=true;}},'⚠️','変更する','bg-red-500');}
@@ -660,7 +722,7 @@ function saveContDate(){const c=data.find(x=>x.id===curId);if(!c)return;const e=
 function chgCont2Date(d){const e=document.getElementById('cont2-date-edit');if(!e)return;const dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];updWeekdayDisp('cont2-date-edit','cont2-weekday-edit');saveCont2Date();}
 function saveCont2Date(){const c=data.find(x=>x.id===curId);if(!c)return;const e=document.getElementById('cont2-date-edit');if(e)c.continuedDate=new Date(e.value+'T12:00:00').toISOString();save();toast('継続日を更新しました');}
 
-function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-500 text-center py-4">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);const isW2=v.isWeek2;return`<div class="border rounded-lg p-3${isW2?' bg-purple-50 border-purple-200':''}"><div class="flex justify-between items-start mb-1"><span class="font-medium text-gray-800 text-sm">${fmtDT(v.date)}</span><div class="flex gap-1">${isW2?'<button onclick="event.stopPropagation();editWeek2()" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>':'<button onclick="event.stopPropagation();editV('+i+')" class="text-blue-500 text-sm px-3 py-2 rounded hover:bg-blue-50">編集</button>'}<button onclick="event.stopPropagation();${isW2?'cfDelW2('+i+')':'cfDelV('+i+')'}" class="text-red-500 text-sm px-3 py-2 rounded hover:bg-red-50">削除</button></div></div><p class="text-gray-600 text-sm whitespace-pre-wrap">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
+function renderVisits(c){const cont=document.getElementById('visits');if(!c.visitHistory||c.visitHistory.length===0){cont.innerHTML='<p class="text-gray-400 text-center py-6 font-bold">履歴なし</p>';return;}const s=[...c.visitHistory].sort((a,b)=>new Date(b.date)-new Date(a.date));cont.innerHTML=s.map(v=>{const i=c.visitHistory.indexOf(v);const isW2=v.isWeek2;return`<div class="border rounded-lg p-3${isW2?' bg-purple-50 border-purple-200':''}"><div class="flex justify-between items-start mb-1"><span class="font-bold text-gray-800 text-sm">${fmtDT(v.date)}</span><div class="flex gap-1">${isW2?'<button onclick="event.stopPropagation();editWeek2()" class="text-blue-500 text-xs px-2 py-1 rounded bg-white border border-blue-200 font-bold">編集</button>':'<button onclick="event.stopPropagation();editV('+i+')" class="text-blue-500 text-xs px-2 py-1 rounded bg-white border border-blue-200 font-bold">編集</button>'}<button onclick="event.stopPropagation();${isW2?'cfDelW2('+i+')':'cfDelV('+i+')'}" class="text-red-500 text-xs px-2 py-1 rounded bg-white border border-red-200 font-bold">削除</button></div></div><p class="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">${esc(v.memo)||'(メモなし)'}</p></div>`;}).join('');}
 
 function cfDelW2(i){showCf('確認','2週目お届け記録を削除しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';c.visitHistory.splice(i,1);save();renderVisits(c);updCampUI();toast('2週目お届けを削除しました');}},'🗑️','削除','bg-red-500');}
 let w2EditDirty=false;
@@ -677,13 +739,11 @@ function parseJpDate(s){if(!s)return null;const m=s.match(/(\d{4})\/(\d{1,2})\/(
 
 function saveCust(){const c=data.find(x=>x.id===curId);if(!c)return;c.campaign=document.querySelector('input[name="d-camp"]:checked').value;c.name=document.getElementById('d-name').value.trim();c.kana=document.getElementById('d-kana').value.trim();c.address=document.getElementById('d-addr').value.trim();c.contact=getChk('d-contact').join(', ');c.needs=getChk('d-needs').join(', ');save();detDirty=false;toast('保存しました');}
 
-// チップ追加機能 (targetId指定に対応)
 function addMemoTag(targetId, tag){
     const area = document.getElementById(targetId);
     if(area) area.value = area.value ? area.value + ' ' + tag : tag;
 }
 
-// 2週目ボタン用関数
 function addWeek2Visit(){
     showCf('確認','2週目お届けを完了としますか？',r=>{
         if(r){
@@ -704,13 +764,10 @@ function addWeek2Visit(){
     },'📦','完了','bg-purple-600');
 }
 
-// 訪問追加（不在対応 + 確認ダイアログ）
 function addVisit(isAbsent){
     if(processing)return;
-    
-    // 不在ボタンの場合のみ確認メッセージを表示
     if(isAbsent){
-        showCf('確認','「不在」として記録しますか？', r => {
+        showCf('確認','「不在」として記録しますか？\n（訪問回数にはカウントされません）', r => {
             if(r) {
                 execAddVisit(true);
             }
@@ -724,36 +781,21 @@ function execAddVisit(isAbsent){
     processing=true;
     const btn=document.getElementById('add-v-btn');
     btn.classList.add('disabled');
-    
     const c=data.find(x=>x.id===curId);
     if(!c){processing=false;return;}
     const prevSt=c.status;
     let memo=document.getElementById('d-vmemo').value.trim();
     const visitDate=document.getElementById('d-vdate').value+' '+document.getElementById('d-vtime').value;
-    
-    if(isAbsent){
-        memo = '【不在】' + (memo ? ' ' + memo : '');
-    }
-
+    if(isAbsent){memo = '【不在】' + (memo ? ' ' + memo : '');}
     c.visitHistory.push({date:visitDate,memo:memo});
-
     const validVisits = c.visitHistory.filter(v => !v.memo.includes('【不在】'));
-    if(c.status==='sampling' && validVisits.length>1){
-        c.status='communication';
-    }
-
+    if(c.status==='sampling' && validVisits.length>1){c.status='communication';}
     save();
     setTimeout(()=>{
         renderVisits(c);updStatBadge(c.status,c.campaign);updCampUI();
         document.getElementById('d-vmemo').value='';
         setToday();
-        if(isAbsent){
-            toast('不在として記録しました');
-        } else if(prevSt!==c.status){
-            toast('追加しました（ステータス更新）');
-        }else{
-            toast('追加しました');
-        }
+        if(isAbsent){toast('不在として記録しました');} else if(prevSt!==c.status){toast('追加しました（ステータス更新）');}else{toast('追加しました');}
         btn.classList.remove('disabled');
         processing=false;
     },300);
@@ -779,98 +821,4 @@ document.getElementById('p4-comm-bar').style.width=samp4?comm4/samp4*100+'%':'0%
 document.getElementById('p4-acq-bar').style.width=comm4?acq4/comm4*100+'%':'0%';
 document.getElementById('p4-cont-bar').style.width=acq4?cont4/acq4*100+'%':'0%';
 const acq2=c2.length,w2=c2.filter(c=>c.week2Delivered).length,cont2=c2.filter(c=>c.continued).length;
-document.getElementById('p2-acq').textContent=acq2;document.getElementById('p2-goal-disp').textContent=goals.g2;
-document.getElementById('p2-w2').textContent=w2;document.getElementById('p2-acq2').textContent=acq2;
-document.getElementById('p2-cont').textContent=cont2;document.getElementById('p2-acq3').textContent=acq2;
-document.getElementById('p2-acq-bar').style.width=Math.min(acq2/goals.g2*100,100)+'%';document.getElementById('p2-acq-bar').className='prog-fill '+(acq2>=goals.g2?'bg-green-500':'bg-purple-500');
-document.getElementById('p2-w2-bar').style.width=acq2?w2/acq2*100+'%':'0%';
-document.getElementById('p2-cont-bar').style.width=acq2?cont2/acq2*100+'%':'0%';
-document.getElementById('p-all').textContent=data.length;document.getElementById('p-all-acq').textContent=data.filter(c=>c.acquired||c.campaign==='2week').length;}
-
-function save(){localStorage.setItem('cdata',JSON.stringify(data));localStorage.setItem('idCnt',idCnt.toString());}
-
-function confirmDeleteAll(){showCf('⚠️ 警告','全ての顧客データを削除します。\nこの操作は取り消せません。\n\n※削除前に「Excel出力」でバックアップを取ることをお勧めします。',r=>{if(r){showCf('⚠️ 最終確認1/2','本当に全データを削除しますか？',r2=>{if(r2){showCf('🚨 最終確認2/2','最後の確認です。\n削除を実行してもよろしいですか？',r3=>{if(r3){data=[];idCnt=1;save();localStorage.removeItem('initialized');toast('全データを削除しました','🗑️');render();}},'🚨','完全に削除','bg-red-600');}},'⚠️','削除する','bg-red-500');}},'⚠️','続ける','bg-red-500');}
-
-function confirmRestoreSample(){const hasSample=data.some(c=>c.name&&c.name.includes('【見本】'));if(hasSample){showCf('確認 (1/3)','既に見本データが存在します。\nさらに追加しますか？',r=>{if(r){showCf('確認 (2/3)','140件の見本データを追加します。\n続けますか？',r2=>{if(r2){showCf('最終確認 (3/3)','見本データを追加してもよろしいですか？',r3=>{if(r3)addSampleData();},'📋','追加する','bg-amber-500');}},'⚠️','続ける','bg-amber-500');}},'⚠️','次へ','bg-amber-500');}else{showCf('確認 (1/3)','見本データを追加しますか？',r=>{if(r){showCf('確認 (2/3)','140件の見本データを追加します。\n続けますか？',r2=>{if(r2){showCf('最終確認 (3/3)','見本データを追加してもよろしいですか？',r3=>{if(r3)addSampleData();},'📋','追加する','bg-blue-500');}},'📋','続ける','bg-blue-500');}},'📋','次へ','bg-blue-500');}}
-
-function addSampleData(){
-const LN=['田中','佐藤','鈴木','高橋','渡辺','伊藤','山本','中村','小林','加藤','吉田','山田','佐々木','松本','井上','木村','林','斎藤','清水','山口','森','池田','橋本','阿部','石川','前田','藤田','岡田','後藤','村上','近藤','石井','坂本','遠藤','青木','藤井','西村','福田','太田','三浦','藤原','岡本','松田','中川','中野','原田','小野','竹内','金子','和田','中山','石田','上田','森田','原','柴田','酒井','工藤','横山'];
-const KN={'田中':'たなか','佐藤':'さとう','鈴木':'すずき','高橋':'たかはし','渡辺':'わたなべ','伊藤':'いとう','山本':'やまもと','中村':'なかむら','小林':'こばやし','加藤':'かとう','吉田':'よしだ','山田':'やまだ','佐々木':'ささき','松本':'まつもと','井上':'いのうえ','木村':'きむら','林':'はやし','斎藤':'さいとう','清水':'しみず','山口':'やまぐち','森':'もり','池田':'いけだ','橋本':'はしもと','阿部':'あべ','石川':'いしかわ','前田':'まえだ','藤田':'ふじた','岡田':'おかだ','後藤':'ごとう','村上':'むらかみ','近藤':'こんどう','石井':'いしい','坂本':'さかもと','遠藤':'えんどう','青木':'あおき','藤井':'ふじい','西村':'にしむら','福田':'ふくだ','太田':'おおた','三浦':'みうら','藤原':'ふじわら','岡本':'おかもと','松田':'まつだ','中川':'なかがわ','中野':'なかの','原田':'はらだ','小野':'おの','竹内':'たけうち','金子':'かねこ','和田':'わだ','中山':'なかやま','石田':'いしだ','上田':'うえだ','森田':'もりた','原':'はら','柴田':'しばた','酒井':'さかい','工藤':'くどう','横山':'よこやま'};
-const AD=['桜町','緑が丘','青葉台','松原','梅田','若葉','日の出','東町','西町','南町','北町','中央','本町','新町','旭町','栄町','幸町','寿町','富士見','弥生'];
-const CT=['奥','旦那','おば','おじ','子'];
-const ND=['便秘','下痢','睡眠','ストレス','アレルギー'];
-const M1=['初回訪問。サンプルをお渡し。','興味を持ってくださった。','家族の健康が気になるとのこと。','以前ヤクルトを飲んでいた。','お子様の健康のため検討中。','腸内環境に興味あり。','知人の紹介で興味を持った。','テレビで見て気になっていた。','健康診断の結果が気になる。','最近お腹の調子が良くない。'];
-const M2=['2回目訪問。調子が良いとのこと。','家族も興味を持ち始めた。','毎日飲んでいるとのこと。','効果を実感し始めている。','もう少し続けてみたい。','味が好きとのこと。','お腹の調子が良くなった。','朝の目覚めが良くなった。','便通が改善された。','家族にも勧めたい。'];
-const M3=['CP申込いただきました！','継続を決めてくださった。','ご家族分も申込。','定期購入を希望。','友人にも紹介したい。'];
-const MW=['2週目お届け完了。継続検討中。','2週目お届け。効果を実感中。','2週目。家族も飲み始めた。','2週目お届け。味が気に入った様子。','2週目完了。前向きに検討中。'];
-const ri=(a)=>a[Math.floor(Math.random()*a.length)];
-const ris=(a,n)=>{const s=[...a].sort(()=>0.5-Math.random());return s.slice(0,n).join(', ');};
-const rd=(d)=>{const dt=new Date();dt.setDate(dt.getDate()-Math.floor(Math.random()*d));return dt.toISOString().split('T')[0];};
-const rt=()=>{const h=9+Math.floor(Math.random()*10);return`${String(h).padStart(2,'0')}:${Math.random()>0.5?'00':'30'}`;};
-const samples=[];let sid=data.length>0?Math.max(...data.map(c=>c.id))+1:1;
-for(let i=0;i<90;i++){
-const ln=ri(LN);const vc=1+Math.floor(Math.random()*4);const vh=[];
-for(let v=0;v<vc;v++){const da=28-(v*7)+Math.floor(Math.random()*5);vh.push({date:`${rd(da)} ${rt()}`,memo:v===0?ri(M1):v===1?ri(M2):v>=2?ri(M3):'フォロー訪問。'});}
-let st='sampling',acq=false,cont=false;
-if(vc>=2){st='communication';if(Math.random()>0.4){st='acquired';acq=true;if(Math.random()>0.3)cont=true;}}
-samples.push({id:sid++,campaign:'4week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:st,acquired:acq,acquiredDate:acq?new Date(Date.now()-Math.random()*14*86400000).toISOString():null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:false,week2Date:null,week2Memo:'',visitHistory:vh,createdAt:new Date(Date.now()-28*86400000+Math.random()*7*86400000).toISOString()});
-}
-for(let i=0;i<50;i++){
-const ln=ri(LN);const w2=Math.random()>0.3;const cont=w2&&Math.random()>0.5;
-samples.push({id:sid++,campaign:'2week',name:`${ln}様【見本】`,kana:KN[ln]||'',address:`${ri(AD)}${1+Math.floor(Math.random()*10)}-${1+Math.floor(Math.random()*20)}-${1+Math.floor(Math.random()*30)}`,contact:ris(CT,1+Math.floor(Math.random()*2)),needs:ris(ND,1+Math.floor(Math.random()*3)),status:'sampling',acquired:false,acquiredDate:null,continued:cont,continuedDate:cont?new Date(Date.now()-Math.random()*7*86400000).toISOString():null,week2Delivered:w2,week2Date:w2?`${rd(7)} ${rt()}`:null,week2Memo:w2?ri(MW):'',visitHistory:[{date:`${rd(14)} ${rt()}`,memo:'2週間無料CPでお試し開始。'}],createdAt:new Date(Date.now()-14*86400000+Math.random()*7*86400000).toISOString()});
-}
-data.push(...samples);idCnt=Math.max(...data.map(c=>c.id))+1;save();toast('見本データ140件を追加しました');render();
-}
-
-function exportXL(){if(data.length===0){showCf('確認','データがありません。空ファイルを出力しますか？',r=>{if(r)doExport();},'⚠️','出力','bg-amber-500');return;}doExport();}
-function statToJp(s,camp){if(camp==='2week'){return s==='sampling'?'1週間分お届け済':s==='communication'?'2週間分お届け済':'';}return s==='sampling'?'サンプリング':s==='communication'?'コミュニケーション':s==='acquired'?'CP申込':'';}
-function jpToStat(jp){const m={'サンプリング':'sampling','コミュニケーション':'communication','CP申込':'acquired','1週間分お届け済':'sampling','2週間分お届け済':'communication'};return m[jp]||'sampling';}
-function doExport(){const d=data.map(c=>({ID:c.id,キャンペーン:c.campaign==='4week'?'4週間体感':'2週間無料',顧客名:c.name||'',よみがな:c.kana||'',住所:c.address||'',対面者:c.contact||'',ニーズ:c.needs||'',ステータス:statToJp(c.status,c.campaign),CP申込:c.acquired?'済':'',申込日:c.acquiredDate?fmtDate(c.acquiredDate):'',継続:c.continued?'済':'',継続日:c.continuedDate?fmtDate(c.continuedDate):'','2週目お届け':c.week2Delivered?'済':'','2週目日時':c.week2Date||'','2週目メモ':c.week2Memo||'',訪問履歴JSON:JSON.stringify(c.visitHistory||[])}));const ws=XLSX.utils.json_to_sheet(d),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'顧客');XLSX.writeFile(wb,`顧客_${new Date().toISOString().split('T')[0]}.xlsx`);toast('Excel出力しました');}
-function confirmImport(){showCf('データ復元',`現在の${data.length}件が全削除されます。`,r=>{if(r)document.getElementById('imp-file').click();},'⚠️','復元','bg-red-500');}
-
-function importXL(e){
-    const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=ev=>{
-        try{
-            const d=new Uint8Array(ev.target.result);
-            const wb=XLSX.read(d,{type:'array', cellDates: true});
-            const j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            data=j.map(row=>({
-                id:row['ID']||idCnt++,
-                campaign:row['キャンペーン']==='2週間無料'?'2week':'4week',
-                name:row['顧客名']||'',
-                kana:row['よみがな']||'',
-                address:row['住所']||'',
-                contact:row['対面者']||'',
-                needs:row['ニーズ']||'',
-                status:jpToStat(row['ステータス']),
-                acquired:row['CP申込']==='済',
-                acquiredDate:parseImpDate(row['申込日']),
-                continued:row['継続']==='済',
-                continuedDate:parseImpDate(row['継続日']),
-                week2Delivered:row['2週目お届け']==='済',
-                week2Date:row['2週目日時']||null,
-                week2Memo:row['2週目メモ']||'',
-                visitHistory:row['訪問履歴JSON']?JSON.parse(row['訪問履歴JSON']):[]
-            }));
-            const mx=Math.max(...data.map(c=>c.id),0);idCnt=mx+1;save();toast(`${data.length}件復元`);render();
-        }catch(err){toast('読込失敗','❌');console.error(err);}
-    };
-    r.readAsArrayBuffer(f);e.target.value='';
-}
-
-function parseImpDate(v){
-    if(!v) return null;
-    if(v instanceof Date) return v.toISOString();
-    if(typeof v === 'string') return parseJpDate(v);
-    return null;
-}
-
-function toast(m,i='✅'){document.getElementById('toast-msg').textContent=m;document.getElementById('toast-icon').textContent=i;document.getElementById('toast').classList.remove('hidden');setTimeout(()=>document.getElementById('toast').classList.add('hidden'),3000);}
-function hideToast(){document.getElementById('toast').classList.add('hidden');}
-
-if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));}
-</script>
-</body>
-</html>
+document.getElementById('p2-acq').textContent=acq2;document.getElementById('p2-goal-disp
