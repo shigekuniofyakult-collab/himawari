@@ -70,7 +70,11 @@
                 <h3 class="text-lg font-bold text-gray-800 mb-4">訪問記録を編集</h3>
                 <div class="space-y-4">
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
-                        <input type="date" id="ed-date" class="w-full border rounded-lg px-3 py-2" oninput="editDirty=true"></div>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="ed-date" class="flex-1 border rounded-lg px-3 py-2" oninput="editDirty=true" onchange="updWeekdayDisp('ed-date','ed-weekday')">
+                            <span id="ed-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                        </div>
+                    </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
                         <select id="ed-time" class="w-full border rounded-lg px-3 py-2" onchange="editDirty=true"></select></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
@@ -90,7 +94,11 @@
                 <h3 class="text-lg font-bold text-purple-700 mb-4">📦 2週目お届けを編集</h3>
                 <div class="space-y-4">
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">お届け日</label>
-                        <input type="date" id="w2ed-date" class="w-full border rounded-lg px-3 py-2" oninput="w2EditDirty=true"></div>
+                        <div class="flex items-center gap-2">
+                            <input type="date" id="w2ed-date" class="flex-1 border rounded-lg px-3 py-2" oninput="w2EditDirty=true" onchange="updWeekdayDisp('w2ed-date','w2ed-weekday')">
+                            <span id="w2ed-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
+                        </div>
+                    </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
                         <select id="w2ed-time" class="w-full border rounded-lg px-3 py-2" onchange="w2EditDirty=true"></select></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">メモ</label>
@@ -160,9 +168,10 @@
                         <textarea id="r-memo" rows="3" placeholder="会話内容など" class="w-full border rounded-lg px-4 py-3" oninput="formDirty=true"></textarea></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">初回訪問日</label>
                         <div class="flex items-center gap-2">
-                            <button onclick="chgDate('r-date',-1)" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
-                            <input type="date" id="r-date" class="flex-1 border rounded-lg px-3 py-2 text-center">
-                            <button onclick="chgDate('r-date',1)" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">▶</button>
+                            <button onclick="chgDate('r-date',-1);updWeekdayDisp('r-date','r-weekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
+                            <input type="date" id="r-date" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('r-date','r-weekday')">
+                            <button onclick="chgDate('r-date',1);updWeekdayDisp('r-date','r-weekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">▶</button>
+                            <span id="r-weekday" class="text-gray-600 font-medium w-8 text-center"></span>
                         </div>
                     </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問時刻</label>
@@ -309,9 +318,10 @@
                     </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">訪問日</label>
                         <div class="flex items-center gap-2">
-                            <button onclick="chgDate('d-vdate',-1)" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
-                            <input type="date" id="d-vdate" class="flex-1 border rounded-lg px-3 py-2 text-center">
-                            <button onclick="chgDate('d-vdate',1)" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">▶</button>
+                            <button onclick="chgDate('d-vdate',-1);updWeekdayDisp('d-vdate','d-vweekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">◀</button>
+                            <input type="date" id="d-vdate" class="flex-1 border rounded-lg px-3 py-2 text-center" onchange="updWeekdayDisp('d-vdate','d-vweekday')">
+                            <button onclick="chgDate('d-vdate',1);updWeekdayDisp('d-vdate','d-vweekday')" class="w-11 h-11 bg-gray-100 rounded-lg text-lg">▶</button>
+                            <span id="d-vweekday" class="text-gray-600 font-medium w-8 text-center"></span>
                         </div>
                     </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">時刻</label>
@@ -470,7 +480,7 @@ function saveGoals(){let g4=parseInt(document.getElementById('goal-4week').value
 
 function initTimes(){const o=[];for(let h=9;h<=19;h++){o.push(`${String(h).padStart(2,'0')}:00`);if(h<19)o.push(`${String(h).padStart(2,'0')}:30`);}['r-time','d-vtime','ed-time','w2ed-time'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=o.map(t=>`<option value="${t}">${t}</option>`).join('');});}
 
-function setToday(){const t=new Date().toISOString().split('T')[0];['r-date','d-vdate','acq-date-input','cont-date-input','cont2-date-input'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});updWeekdayDisp('acq-date-input','acq-weekday');updWeekdayDisp('cont-date-input','cont-weekday');updWeekdayDisp('cont2-date-input','cont2-weekday');}
+function setToday(){const t=new Date().toISOString().split('T')[0];['r-date','d-vdate','acq-date-input','cont-date-input','cont2-date-input'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=t;});updWeekdayDisp('r-date','r-weekday');updWeekdayDisp('d-vdate','d-vweekday');updWeekdayDisp('acq-date-input','acq-weekday');updWeekdayDisp('cont-date-input','cont-weekday');updWeekdayDisp('cont2-date-input','cont2-weekday');}
 
 function chgDate(id,d){const e=document.getElementById(id),dt=new Date(e.value);dt.setDate(dt.getDate()+d);e.value=dt.toISOString().split('T')[0];}
 
@@ -564,7 +574,7 @@ function renderVisits(c){const cont=document.getElementById('visits');if(!c.visi
 function cfDelW2(i){showCf('確認','2週目お届け記録を削除しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';c.visitHistory.splice(i,1);save();renderVisits(c);updCampUI();toast('2週目お届けを削除しました');}},'🗑️','削除','bg-red-500');}
 
 let w2EditDirty=false;
-function editWeek2(){const c=data.find(x=>x.id===curId);if(!c||!c.week2Delivered)return;const d=new Date(c.week2Date);document.getElementById('w2ed-date').value=d.toISOString().split('T')[0];document.getElementById('w2ed-time').value=`${String(d.getHours()).padStart(2,'0')}:${d.getMinutes()<30?'00':'30'}`;document.getElementById('w2ed-memo').value=c.week2Memo||'';w2EditDirty=false;document.getElementById('week2-edit-modal').classList.remove('hidden');}
+function editWeek2(){const c=data.find(x=>x.id===curId);if(!c||!c.week2Delivered)return;const d=new Date(c.week2Date);document.getElementById('w2ed-date').value=d.toISOString().split('T')[0];updWeekdayDisp('w2ed-date','w2ed-weekday');document.getElementById('w2ed-time').value=`${String(d.getHours()).padStart(2,'0')}:${d.getMinutes()<30?'00':'30'}`;document.getElementById('w2ed-memo').value=c.week2Memo||'';w2EditDirty=false;document.getElementById('week2-edit-modal').classList.remove('hidden');}
 
 function closeWeek2EditModal(){if(w2EditDirty){showCf('確認','編集内容を破棄しますか？',r=>{if(r){document.getElementById('week2-edit-modal').classList.add('hidden');w2EditDirty=false;}},'⚠️','破棄','bg-red-500');}else{document.getElementById('week2-edit-modal').classList.add('hidden');}}
 
@@ -572,7 +582,7 @@ function saveWeek2Edit(){const c=data.find(x=>x.id===curId);if(!c)return;const n
 
 function deleteWeek2FromModal(){showCf('確認','2週目お届け記録を削除しますか？',r=>{if(r){const c=data.find(x=>x.id===curId);if(!c)return;c.week2Delivered=false;c.week2Date=null;c.week2Memo='';c.visitHistory=c.visitHistory.filter(v=>!v.isWeek2);save();renderVisits(c);updCampUI();w2EditDirty=false;document.getElementById('week2-edit-modal').classList.add('hidden');toast('2週目お届けを削除しました');}},'🗑️','削除','bg-red-500');}
 
-function fmtDT(s){const d=new Date(s);if(isNaN(d))return s;return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
+function fmtDT(s){const d=new Date(s);if(isNaN(d))return s;const days=['日','月','火','水','木','金','土'];return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${days[d.getDay()]}) ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}
 
 function fmtDate(s){const d=new Date(s);if(isNaN(d))return s;const days=['日','月','火','水','木','金','土'];return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${days[d.getDay()]})`;}
 
@@ -586,7 +596,7 @@ function saveCust(){const c=data.find(x=>x.id===curId);if(!c)return;c.campaign=d
 
 function addVisit(){if(processing)return;processing=true;const btn=document.getElementById('add-v-btn');btn.classList.add('disabled');btn.textContent='追加中...';const c=data.find(x=>x.id===curId);if(!c){processing=false;return;}const prevSt=c.status;const isWeek2=document.getElementById('d-is-week2')&&document.getElementById('d-is-week2').checked;const memo=document.getElementById('d-vmemo').value.trim();const visitDate=document.getElementById('d-vdate').value+' '+document.getElementById('d-vtime').value;if(isWeek2){c.week2Delivered=true;c.week2Date=visitDate;c.week2Memo=memo;c.visitHistory.push({date:visitDate,memo:'📦2週目お届け'+(memo?' - '+memo:''),isWeek2:true});}else{c.visitHistory.push({date:visitDate,memo:memo});}if(c.status==='sampling'&&c.visitHistory.length>1)c.status='communication';save();setTimeout(()=>{renderVisits(c);updStatBadge(c.status,c.campaign);updCampUI();document.getElementById('d-vmemo').value='';if(document.getElementById('d-is-week2'))document.getElementById('d-is-week2').checked=false;setToday();if(isWeek2){toast('📦2週目お届けを記録しました');}else if(prevSt!==c.status){toast('追加しました（ステータス更新）');}else{toast('追加しました');}btn.classList.remove('disabled');btn.textContent='📝 追加';processing=false;},300);}
 
-function editV(i){const c=data.find(x=>x.id===curId);if(!c)return;const v=c.visitHistory[i];editIdx=i;const d=new Date(v.date);document.getElementById('ed-date').value=d.toISOString().split('T')[0];document.getElementById('ed-time').value=`${String(d.getHours()).padStart(2,'0')}:${d.getMinutes()<30?'00':'30'}`;document.getElementById('ed-memo').value=v.memo||'';editDirty=false;document.getElementById('edit-modal').classList.remove('hidden');}
+function editV(i){const c=data.find(x=>x.id===curId);if(!c)return;const v=c.visitHistory[i];editIdx=i;const d=new Date(v.date);document.getElementById('ed-date').value=d.toISOString().split('T')[0];updWeekdayDisp('ed-date','ed-weekday');document.getElementById('ed-time').value=`${String(d.getHours()).padStart(2,'0')}:${d.getMinutes()<30?'00':'30'}`;document.getElementById('ed-memo').value=v.memo||'';editDirty=false;document.getElementById('edit-modal').classList.remove('hidden');}
 
 function closeEditModal(){if(editDirty){showCf('確認','編集内容を破棄しますか？',r=>{if(r){document.getElementById('edit-modal').classList.add('hidden');editIdx=null;editDirty=false;}},'⚠️','破棄','bg-red-500');}else{document.getElementById('edit-modal').classList.add('hidden');editIdx=null;}}
 
