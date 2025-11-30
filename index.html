@@ -801,7 +801,7 @@ function addWeek2Visit(){
 function addVisit(isAbsent){
     if(processing)return;
     if(isAbsent){
-        showCf('確認','「不在」として記録しますか？\n（訪問回数にはカウントされません）', r => {
+        showCf('確認','「不在」として記録しますか？', r => {
             if(r) {
                 execAddVisit(true);
             }
