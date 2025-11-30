@@ -710,7 +710,7 @@ function addVisit(isAbsent){
     
     // 不在ボタンの場合のみ確認メッセージを表示
     if(isAbsent){
-        showCf('確認','「不在」として記録しますか？\n（訪問回数にはカウントされません）', r => {
+        showCf('確認','「不在」として記録しますか？', r => {
             if(r) {
                 execAddVisit(true);
             }
