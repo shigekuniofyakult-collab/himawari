@@ -161,6 +161,10 @@
         </div>
     </header>
 
+    <div id="backup-banner" class="hidden bg-red-500 text-white text-center py-2 px-4 text-sm font-bold cursor-pointer animate-pulse" onclick="exportXL()">
+        <span id="backup-msg"></span><span class="ml-2 underline">今すぐ保存</span>
+    </div>
+
     <nav class="bg-white shadow-sm z-20">
         <div class="max-w-2xl mx-auto px-2 flex gap-1 pt-1">
             <button onclick="gotoTab('register')" id="tab-reg" class="flex-1 py-3 text-center font-bold text-sm tab-active rounded-t-lg shadow-sm border-t border-x border-amber-200">新規登録</button>
@@ -239,7 +243,7 @@
             
             <div class="bg-white rounded-xl shadow-md p-3 relative">
                 <span class="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-                <input type="text" id="search" placeholder="名前, 住所, メモ検索..." autocomplete="off" oninput="render()" class="w-full border-2 border-gray-200 rounded-xl pl-10 pr-24 py-3 bg-gray-50 focus:bg-white focus:border-amber-500 focus:outline-none transition-colors">
+                <input type="text" id="search" placeholder="名前, 住所, メモ検索..." autocomplete="off" oninput="debounceRender()" class="w-full border-2 border-gray-200 rounded-xl pl-10 pr-24 py-3 bg-gray-50 focus:bg-white focus:border-amber-500 focus:outline-none transition-colors">
                 <button onclick="clearAllFilters()" id="f-clear" class="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-500 text-white text-xs px-3 py-1.5 rounded-full hidden font-bold shadow hover:bg-gray-600 transition">✕ クリア</button>
             </div>
 
@@ -295,6 +299,9 @@
             <div class="text-center text-gray-600 text-sm py-1"><span id="cnt">0</span>件 表示中</div>
             
             <div id="cards" class="space-y-4 pb-4 min-h-[100px]"></div>
+            <div id="load-more-wrap" class="hidden text-center py-4">
+                <button onclick="loadMore()" class="bg-amber-100 text-amber-800 px-8 py-3 rounded-xl font-bold shadow-sm border border-amber-200 hover:bg-amber-200 transition active:scale-95">↓ もっと見る (<span id="remaining-count">0</span>件)</button>
+            </div>
             
             <div id="no-hit-msg" class="hidden text-center py-8">
                 <p class="text-gray-500 font-bold mb-4">該当する顧客がいません</p>
@@ -514,6 +521,39 @@
                 <span class="text-lg">←</span> 顧客一覧に戻る
             </button>
             <h2 class="text-xl font-bold text-gray-800">📊 進捗状況</h2>
+            
+            <!-- 改善③: 要フォローアラート -->
+            <div id="follow-alert" class="hidden bg-red-50 rounded-2xl shadow-sm p-4 border-2 border-red-200">
+                <div class="flex items-center justify-between">
+                    <div><span class="text-red-600 font-bold text-lg">🔴 要フォロー</span>
+                    <span class="text-red-600 font-bold text-2xl ml-2" id="follow-alert-count">0</span><span class="text-red-500 font-bold">件</span></div>
+                    <button onclick="fFollow=true;document.getElementById('f-follow').classList.add('bg-red-500','text-white');document.getElementById('f-follow').classList.remove('bg-gray-100','text-gray-600');updFilterDisplay();showScreen('list');render()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600">一覧で確認</button>
+                </div>
+                <p class="text-red-500 text-xs mt-1 font-medium">15日以上訪問していない顧客がいます</p>
+            </div>
+            
+            <!-- 改善③: 今週/今月の実績サマリー -->
+            <div class="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl shadow-sm p-5 border border-amber-200">
+                <h3 class="font-bold text-amber-900 mb-3">📈 期間別の実績</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm border border-amber-100">
+                        <div class="text-xs text-gray-500 font-bold mb-1">今週の新規登録</div>
+                        <div class="text-2xl font-bold text-amber-600" id="stat-week-new">0</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm border border-green-100">
+                        <div class="text-xs text-gray-500 font-bold mb-1">今週のCP申込</div>
+                        <div class="text-2xl font-bold text-green-600" id="stat-week-acq">0</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm border border-blue-100">
+                        <div class="text-xs text-gray-500 font-bold mb-1">今月の新規登録</div>
+                        <div class="text-2xl font-bold text-blue-600" id="stat-month-new">0</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-3 text-center shadow-sm border border-indigo-100">
+                        <div class="text-xs text-gray-500 font-bold mb-1">今月のCP申込</div>
+                        <div class="text-2xl font-bold text-indigo-600" id="stat-month-acq">0</div>
+                    </div>
+                </div>
+            </div>
             <div class="bg-white rounded-2xl shadow-sm p-5 border border-amber-100">
                 <h3 class="font-bold text-amber-800 mb-4 border-b pb-2">🟠 4週間体感キャンペーン</h3>
                 <div class="space-y-4">
@@ -525,6 +565,14 @@
                         <div class="prog-bar"><div id="p4-acq-bar" class="prog-fill bg-green-500" style="width:0%"></div></div></div>
                     <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>継続</span><span><span id="p4-cont">0</span>/<span id="p4-acq2">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p4-cont-bar" class="prog-fill bg-indigo-500" style="width:0%"></div></div></div>
+                    <div id="p4-funnel" class="mt-3 pt-3 border-t border-amber-100">
+                        <div class="text-xs font-bold text-amber-700 mb-2">📊 コンバージョン率</div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold">サンプリング→コミュ: <span id="cv4-sc">0</span>%</span>
+                            <span class="bg-amber-50 text-amber-700 px-2 py-1 rounded font-bold">コミュ→申込: <span id="cv4-ca">0</span>%</span>
+                            <span class="bg-green-50 text-green-700 px-2 py-1 rounded font-bold">申込→継続: <span id="cv4-ac">0</span>%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="bg-white rounded-2xl shadow-sm p-5 border border-purple-100">
@@ -536,6 +584,13 @@
                         <div class="prog-bar"><div id="p2-w2-bar" class="prog-fill bg-pink-500" style="width:0%"></div></div></div>
                     <div><div class="flex justify-between text-sm mb-1 font-bold text-gray-700"><span>継続</span><span><span id="p2-cont">0</span>/<span id="p2-acq3">0</span>軒</span></div>
                         <div class="prog-bar"><div id="p2-cont-bar" class="prog-fill bg-indigo-500" style="width:0%"></div></div></div>
+                    <div id="p2-funnel" class="mt-3 pt-3 border-t border-purple-100">
+                        <div class="text-xs font-bold text-purple-700 mb-2">📊 コンバージョン率</div>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="bg-purple-50 text-purple-700 px-2 py-1 rounded font-bold">登録→2週目届: <span id="cv2-w2">0</span>%</span>
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold">登録→継続: <span id="cv2-cont">0</span>%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="bg-amber-100 rounded-xl p-5 shadow-inner">
@@ -569,6 +624,7 @@ let goals=JSON.parse(localStorage.getItem('goals')||'{"g4":80,"g2":50}');
 let curId=null,editIdx=null,formDirty=false,detDirty=false,editDirty=false,processing=false;
 let delCustBk=null,delVisitBk=null,undoTimer=null,cfCb=null;
 let fKana='',fCamp='',fStat='',fFollow=false;
+let pageSize=20,curPage=1,filteredData=[];
 
 document.addEventListener('DOMContentLoaded',()=>{
     initTimes();
@@ -665,19 +721,65 @@ function clrForm(){
     setToday();updChkStyle('r-contact');updChkStyle('r-needs');
 }
 
+let searchTimer;
+function debounceRender(){clearTimeout(searchTimer);searchTimer=setTimeout(()=>{curPage=1;render();},300);}
+
 function render(){
     updSum();
     const q=document.getElementById('search').value.toLowerCase();
     const hasFilter = fKana||fCamp||fStat||fFollow||q;
     document.getElementById('f-clear').classList.toggle('hidden', !hasFilter);
-    let f=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat){const[fc,fs]=fStat.split('-');const campMatch=fc==='4'?c.campaign==='4week':c.campaign==='2week';if(!campMatch||c.status!==fs)return false;}if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});
-    f.sort((a,b)=>b.id-a.id);
-    document.getElementById('cnt').textContent=f.length;
+    filteredData=data.filter(c=>{if(q){const m=(c.name&&c.name.toLowerCase().includes(q))||(c.address&&c.address.toLowerCase().includes(q))||(c.kana&&c.kana.toLowerCase().includes(q))||c.visitHistory.some(v=>v.memo&&v.memo.toLowerCase().includes(q));if(!m)return false;}if(fKana&&!matchKana(c.kana||c.name||'',fKana))return false;if(fCamp&&c.campaign!==fCamp)return false;if(fStat){const[fc,fs]=fStat.split('-');const campMatch=fc==='4'?c.campaign==='4week':c.campaign==='2week';if(!campMatch||c.status!==fs)return false;}if(fFollow){const d=daysSince(c);if(d<15&&d!==-1)return false;}return true;});
+    filteredData.sort((a,b)=>b.id-a.id);
+    const total=filteredData.length;
+    const showCount=Math.min(curPage*pageSize, total);
+    const pageData=filteredData.slice(0, showCount);
+    document.getElementById('cnt').textContent=total;
     const cont=document.getElementById('cards');
-    if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2 font-bold">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-3 rounded-lg font-bold shadow">新規登録</button></div>';document.getElementById('no-hit-msg').classList.add('hidden');return;}
-    if(f.length===0){cont.innerHTML='';document.getElementById('no-hit-msg').classList.remove('hidden');return;}
+    if(data.length===0){cont.innerHTML='<div class="text-center py-12 bg-white rounded-xl"><div class="text-5xl mb-4">🌻</div><p class="text-gray-600 mb-2 font-bold">顧客がいません</p><button onclick="showScreen(\'register\')" class="mt-4 bg-amber-500 text-white px-6 py-3 rounded-lg font-bold shadow">新規登録</button></div>';document.getElementById('no-hit-msg').classList.add('hidden');document.getElementById('load-more-wrap').classList.add('hidden');return;}
+    if(total===0){cont.innerHTML='';document.getElementById('no-hit-msg').classList.remove('hidden');document.getElementById('load-more-wrap').classList.add('hidden');return;}
     document.getElementById('no-hit-msg').classList.add('hidden');
-    cont.innerHTML=f.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600 font-bold">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600 font-bold">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600 font-bold">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 font-bold">🔄継続</span>':'';return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer border border-gray-100" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px] text-lg">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div>${db}</div><div class="text-sm text-gray-600 space-y-1">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');
+    const remaining=total-showCount;
+    if(remaining>0){document.getElementById('load-more-wrap').classList.remove('hidden');document.getElementById('remaining-count').textContent=remaining;}
+    else{document.getElementById('load-more-wrap').classList.add('hidden');}
+    cont.innerHTML=pageData.map(c=>{const d=daysSince(c);let db='';if(d===-1)db='<span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-600 font-bold">記録なし</span>';else if(d>=15)db=`<span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-600 font-bold">🔴${d}日前</span>`;else if(d>=8)db=`<span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-600 font-bold">⚠️${d}日前</span>`;else db=`<span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-bold">${d}日前</span>`;const cc=c.campaign==='4week'?'camp-4':'camp-2';const sb=statBadge(c.status,c.campaign,c.acquired);const cb=c.continued?'<span class="text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 font-bold">🔄継続</span>':'';
+    // クイックアクションボタン生成
+    let qa='';
+    if(c.campaign==='4week'){
+        if(!c.acquired)qa=`<button onclick="event.stopPropagation();quickAddVisit(${c.id})" class="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-600 border border-blue-200 font-bold">＋訪問</button>`;
+        else if(!c.continued)qa=`<button onclick="event.stopPropagation();quickMarkCont(${c.id})" class="text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 font-bold">🔄継続</button>`;
+    }else{
+        if(!c.week2Delivered)qa=`<button onclick="event.stopPropagation();quickAddVisit(${c.id})" class="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-600 border border-purple-200 font-bold">＋訪問</button>`;
+        else if(!c.continued)qa=`<button onclick="event.stopPropagation();quickMarkCont(${c.id})" class="text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200 font-bold">🔄継続</button>`;
+    }
+    return`<div class="card bg-white rounded-xl shadow-md p-4 ${cc} cursor-pointer border border-gray-100" onclick="showDet(${c.id})"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2 flex-wrap min-w-0"><h3 class="font-bold text-gray-800 truncate max-w-[150px] text-lg">${esc(c.name)||'(未入力)'}</h3>${sb}${cb}</div><div class="flex items-center gap-2">${qa}${db}</div></div><div class="text-sm text-gray-600 space-y-1">${c.address?`<p class="truncate">📍${esc(c.address)}</p>`:''}${c.needs?`<p class="truncate">💊${esc(c.needs)}</p>`:''}</div></div>`;}).join('');
+}
+
+function loadMore(){curPage++;render();
+    // スクロール位置を維持（新たに描画された先頭付近へ軽くスクロール）
+}
+
+// === 改善②: クイックアクション ===
+function quickAddVisit(id){
+    const c=data.find(x=>x.id===id);if(!c)return;
+    const now=new Date();const visitDate=now.toISOString().split('T')[0]+' '+String(now.getHours()).padStart(2,'0')+':'+((now.getMinutes()<15?'00':now.getMinutes()<30?'15':now.getMinutes()<45?'30':'45'));
+    showCf('クイック訪問追加',`「${c.name||'(未入力)'}」に\n本日の訪問記録を追加しますか？\n\n※メモを入れたい場合は顧客詳細から追加してください`,r=>{
+        if(r){
+            c.visitHistory.push({date:visitDate,memo:''});
+            const validVisits=c.visitHistory.filter(v=>!v.memo.includes('【不在】'));
+            if(c.status==='sampling'&&validVisits.length>1)c.status='communication';
+            save();render();toast(`${c.name}に訪問追加しました`);
+        }
+    },'📝','追加','bg-blue-500');
+}
+function quickMarkCont(id){
+    const c=data.find(x=>x.id===id);if(!c)return;
+    showCf('クイック継続登録',`「${c.name||'(未入力)'}」を継続済みにしますか？`,r=>{
+        if(r){
+            c.continued=true;c.continuedDate=new Date().toISOString();
+            save();render();toast(`🔄 ${c.name}を継続済みにしました`);
+        }
+    },'🔄','継続済み','bg-indigo-500');
 }
 
 function statBadge(s,camp,acq){if(camp==='2week'){const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp2 font-bold">1週間分お届け済</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm2 font-bold">2週間分お届け済</span>'};return m[s]||'';}if(acq)return'<span class="text-xs px-2 py-1 rounded-full st-acq font-bold">🎉CP申込</span>';const m={sampling:'<span class="text-xs px-2 py-1 rounded-full st-samp font-bold">サンプリング</span>',communication:'<span class="text-xs px-2 py-1 rounded-full st-comm font-bold">コミュニケーション</span>'};return m[s]||'';}
@@ -685,18 +787,18 @@ function matchKana(t,f){if(!t)return f==='他';const c=t.charAt(0);const r={あ:
 function daysSince(c){if(!c.visitHistory||c.visitHistory.length===0)return-1;const lv=c.visitHistory.reduce((l,v)=>{const d=new Date(v.date);return d>l?d:l;},new Date(0));return Math.floor((new Date()-lv)/(1000*60*60*24));}
 function updSum(){document.getElementById('sum-total').textContent=data.length;}
 
-function setKana(k){fKana=k;document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if((k===''&&b.textContent==='全て')||b.textContent===k)b.classList.add('on');});updFilterDisplay();render();}
+function setKana(k){fKana=k;curPage=1;document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if((k===''&&b.textContent==='全て')||b.textContent===k)b.classList.add('on');});updFilterDisplay();render();}
 function toggleCampF(){const s=document.getElementById('sub-camp');const isHidden=s.classList.contains('hidden');document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');if(isHidden)s.classList.remove('hidden');}
 function toggleStatF(){const s=document.getElementById('sub-stat');const isHidden=s.classList.contains('hidden');document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');if(isHidden)s.classList.remove('hidden');}
-function toggleFollowF(){fFollow=!fFollow;const b=document.getElementById('f-follow');b.classList.toggle('bg-red-500',fFollow);b.classList.toggle('text-white',fFollow);b.classList.toggle('bg-gray-100',!fFollow);b.classList.toggle('text-gray-600',!fFollow);updFilterDisplay();render();}
-function setCampF(v){fCamp=v;document.querySelectorAll('#sub-camp button').forEach(b=>{b.classList.remove('bg-amber-500','bg-purple-500','bg-gray-500','text-white');if((v===''&&b.textContent==='全て')){b.classList.add('bg-gray-500','text-white');}else if((v==='4week'&&b.textContent==='4週間')){b.classList.add('bg-amber-500','text-white');}else if((v==='2week'&&b.textContent==='2週間')){b.classList.add('bg-purple-500','text-white');}});const pb=document.getElementById('f-camp');if(v){pb.classList.add('bg-amber-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-amber-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}
+function toggleFollowF(){fFollow=!fFollow;curPage=1;const b=document.getElementById('f-follow');b.classList.toggle('bg-red-500',fFollow);b.classList.toggle('text-white',fFollow);b.classList.toggle('bg-gray-100',!fFollow);b.classList.toggle('text-gray-600',!fFollow);updFilterDisplay();render();}
+function setCampF(v){fCamp=v;curPage=1;document.querySelectorAll('#sub-camp button').forEach(b=>{b.classList.remove('bg-amber-500','bg-purple-500','bg-gray-500','text-white');if((v===''&&b.textContent==='全て')){b.classList.add('bg-gray-500','text-white');}else if((v==='4week'&&b.textContent==='4週間')){b.classList.add('bg-amber-500','text-white');}else if((v==='2week'&&b.textContent==='2週間')){b.classList.add('bg-purple-500','text-white');}});const pb=document.getElementById('f-camp');if(v){pb.classList.add('bg-amber-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-amber-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}
     document.getElementById('stat-grp-4').classList.toggle('hidden', v==='2week');
     document.getElementById('stat-grp-2').classList.toggle('hidden', v==='4week');
     updFilterDisplay();render();}
-function setStatF(v){fStat=v;document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('ring-2','ring-offset-1','ring-blue-500','ring-purple-500','ring-green-500','ring-amber-500','font-bold');});if(v){const[fc,fs]=v.split('-');const btnMap={'4-sampling':'サンプリング','4-communication':'コミュニケーション','4-acquired':'CP申込','2-sampling':'1週間分お届け済','2-communication':'2週間分お届け済'};const targetText=btnMap[v];document.querySelectorAll('#sub-stat button').forEach(b=>{if(b.textContent===targetText){const ringColor=fc==='4'?(fs==='sampling'?'ring-blue-500':fs==='communication'?'ring-amber-500':'ring-green-500'):'ring-purple-500';b.classList.add('ring-2','ring-offset-1',ringColor,'font-bold');}});}const pb=document.getElementById('f-stat');if(v){pb.classList.add('bg-blue-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-blue-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}updFilterDisplay();render();}
+function setStatF(v){fStat=v;curPage=1;document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('ring-2','ring-offset-1','ring-blue-500','ring-purple-500','ring-green-500','ring-amber-500','font-bold');});if(v){const[fc,fs]=v.split('-');const btnMap={'4-sampling':'サンプリング','4-communication':'コミュニケーション','4-acquired':'CP申込','2-sampling':'1週間分お届け済','2-communication':'2週間分お届け済'};const targetText=btnMap[v];document.querySelectorAll('#sub-stat button').forEach(b=>{if(b.textContent===targetText){const ringColor=fc==='4'?(fs==='sampling'?'ring-blue-500':fs==='communication'?'ring-amber-500':'ring-green-500'):'ring-purple-500';b.classList.add('ring-2','ring-offset-1',ringColor,'font-bold');}});}const pb=document.getElementById('f-stat');if(v){pb.classList.add('bg-blue-500','text-white');pb.classList.remove('bg-gray-100','text-gray-600');}else{pb.classList.remove('bg-blue-500','text-white');pb.classList.add('bg-gray-100','text-gray-600');}updFilterDisplay();render();}
 
 function updFilterDisplay(){const parts=[];if(fCamp)parts.push(fCamp==='4week'?'4週間体感':'2週間無料');if(fStat){const m={'4-sampling':'サンプリング','4-communication':'コミュニケーション','4-acquired':'CP申込','2-sampling':'1週間分お届け済','2-communication':'2週間分お届け済'};parts.push(m[fStat]||'');}if(fFollow)parts.push('要フォロー');if(fKana)parts.push(`よみがな:${fKana}`);const el=document.getElementById('filter-display');if(parts.length>0){el.textContent='🔍 '+parts.join(' / ');el.classList.remove('hidden');}else{el.classList.add('hidden');}}
-function clearAllFilters(){fCamp='';fStat='';fFollow=false;fKana='';document.getElementById('search').value='';['f-camp','f-stat','f-follow'].forEach(id=>{const b=document.getElementById(id);b.classList.remove('bg-amber-500','bg-blue-500','bg-red-500','text-white');b.classList.add('bg-gray-100','text-gray-600');});document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if(b.textContent==='全て')b.classList.add('on');});document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('ring-2','ring-offset-1','ring-blue-500','ring-purple-500','ring-green-500','ring-amber-500','font-bold');});document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');document.getElementById('stat-grp-4').classList.remove('hidden');document.getElementById('stat-grp-2').classList.remove('hidden');updFilterDisplay();render();}
+function clearAllFilters(){fCamp='';fStat='';fFollow=false;fKana='';curPage=1;document.getElementById('search').value='';['f-camp','f-stat','f-follow'].forEach(id=>{const b=document.getElementById(id);b.classList.remove('bg-amber-500','bg-blue-500','bg-red-500','text-white');b.classList.add('bg-gray-100','text-gray-600');});document.querySelectorAll('#kana-filter button').forEach(b=>{b.classList.remove('on');if(b.textContent==='全て')b.classList.add('on');});document.querySelectorAll('#sub-stat button').forEach(b=>{b.classList.remove('ring-2','ring-offset-1','ring-blue-500','ring-purple-500','ring-green-500','ring-amber-500','font-bold');});document.getElementById('sub-camp').classList.add('hidden');document.getElementById('sub-stat').classList.add('hidden');document.getElementById('stat-grp-4').classList.remove('hidden');document.getElementById('stat-grp-2').classList.remove('hidden');updFilterDisplay();render();}
 
 function showDet(id){
     curId=id;const c=data.find(x=>x.id===id);if(!c)return;
@@ -861,9 +963,36 @@ document.getElementById('p2-cont').textContent=cont2;document.getElementById('p2
 document.getElementById('p2-acq-bar').style.width=Math.min(acq2/goals.g2*100,100)+'%';document.getElementById('p2-acq-bar').className='prog-fill '+(acq2>=goals.g2?'bg-green-500':'bg-purple-500');
 document.getElementById('p2-w2-bar').style.width=acq2?w2/acq2*100+'%':'0%';
 document.getElementById('p2-cont-bar').style.width=acq2?cont2/acq2*100+'%':'0%';
-document.getElementById('p-all').textContent=data.length;document.getElementById('p-all-acq').textContent=data.filter(c=>c.acquired||c.campaign==='2week').length;}
+document.getElementById('p-all').textContent=data.length;document.getElementById('p-all-acq').textContent=data.filter(c=>c.acquired||c.campaign==='2week').length;
 
-function save(){localStorage.setItem('cdata',JSON.stringify(data));localStorage.setItem('idCnt',idCnt.toString());}
+// === 改善③: コンバージョン率 ===
+document.getElementById('cv4-sc').textContent=samp4?Math.round(comm4/samp4*100):0;
+document.getElementById('cv4-ca').textContent=comm4?Math.round(acq4/comm4*100):0;
+document.getElementById('cv4-ac').textContent=acq4?Math.round(cont4/acq4*100):0;
+document.getElementById('cv2-w2').textContent=acq2?Math.round(w2/acq2*100):0;
+document.getElementById('cv2-cont').textContent=acq2?Math.round(cont2/acq2*100):0;
+
+// === 改善③: 要フォローアラート ===
+const followCount=data.filter(c=>{const d=daysSince(c);return d>=15;}).length;
+const followEl=document.getElementById('follow-alert');
+if(followCount>0){followEl.classList.remove('hidden');document.getElementById('follow-alert-count').textContent=followCount;}
+else{followEl.classList.add('hidden');}
+
+// === 改善③: 今週/今月の実績 ===
+const now=new Date();
+const weekStart=new Date(now);weekStart.setDate(now.getDate()-now.getDay());weekStart.setHours(0,0,0,0);
+const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+const weekNew=data.filter(c=>{const d=new Date(c.createdAt);return d>=weekStart;}).length;
+const weekAcq=data.filter(c=>{if(!c.acquiredDate&&c.campaign!=='2week')return false;const d=c.acquiredDate?new Date(c.acquiredDate):new Date(c.createdAt);return d>=weekStart;}).length;
+const monthNew=data.filter(c=>{const d=new Date(c.createdAt);return d>=monthStart;}).length;
+const monthAcq=data.filter(c=>{if(!c.acquiredDate&&c.campaign!=='2week')return false;const d=c.acquiredDate?new Date(c.acquiredDate):new Date(c.createdAt);return d>=monthStart;}).length;
+document.getElementById('stat-week-new').textContent=weekNew;
+document.getElementById('stat-week-acq').textContent=weekAcq;
+document.getElementById('stat-month-new').textContent=monthNew;
+document.getElementById('stat-month-acq').textContent=monthAcq;
+}
+
+function save(){localStorage.setItem('cdata',JSON.stringify(data));localStorage.setItem('idCnt',idCnt.toString());idbSave();}
 
 function confirmDeleteAll(){showCf('⚠️ 警告','全ての顧客データを削除します。\nこの操作は取り消せません。\n\n※削除前に「Excel出力」でバックアップを取ることをお勧めします。',r=>{if(r){showCf('⚠️ 最終確認1/2','本当に全データを削除しますか？',r2=>{if(r2){showCf('🚨 最終確認2/2','最後の確認です。\n削除を実行してもよろしいですか？',r3=>{if(r3){data=[];idCnt=1;save();localStorage.removeItem('initialized');toast('全データを削除しました','🗑️');render();}},'🚨','完全に削除','bg-red-600');}},'⚠️','削除する','bg-red-500');}},'⚠️','続ける','bg-red-500');}
 
@@ -903,7 +1032,7 @@ data.push(...samples);idCnt=Math.max(...data.map(c=>c.id))+1;save();toast('見�
 function exportXL(){if(data.length===0){showCf('確認','データがありません。空ファイルを出力しますか？',r=>{if(r)doExport();},'⚠️','出力','bg-amber-500');return;}doExport();}
 function statToJp(s,camp){if(camp==='2week'){return s==='sampling'?'1週間分お届け済':s==='communication'?'2週間分お届け済':'';}return s==='sampling'?'サンプリング':s==='communication'?'コミュニケーション':s==='acquired'?'CP申込':'';}
 function jpToStat(jp){const m={'サンプリング':'sampling','コミュニケーション':'communication','CP申込':'acquired','1週間分お届け済':'sampling','2週間分お届け済':'communication'};return m[jp]||'sampling';}
-function doExport(){const now=new Date();const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;const d=data.map(c=>({ID:c.id,キャンペーン:c.campaign==='4week'?'4週間体感':'2週間無料',顧客名:c.name||'',よみがな:c.kana||'',住所:c.address||'',対面者:c.contact||'',ニーズ:c.needs||'',ステータス:statToJp(c.status,c.campaign),CP申込:c.acquired?'済':'',申込日:c.acquiredDate?fmtDate(c.acquiredDate):'',継続:c.continued?'済':'',継続日:c.continuedDate?fmtDate(c.continuedDate):'','2週目お届け':c.week2Delivered?'済':'','2週目日時':c.week2Date||'','2週目メモ':c.week2Memo||'',訪問履歴JSON:JSON.stringify(c.visitHistory||[])}));const ws=XLSX.utils.json_to_sheet(d),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'顧客');XLSX.writeFile(wb,`顧客_${ts}.xlsx`);toast('Excel出力しました');}
+function doExport(){const now=new Date();const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;const d=data.map(c=>({ID:c.id,キャンペーン:c.campaign==='4week'?'4週間体感':'2週間無料',顧客名:c.name||'',よみがな:c.kana||'',住所:c.address||'',対面者:c.contact||'',ニーズ:c.needs||'',ステータス:statToJp(c.status,c.campaign),CP申込:c.acquired?'済':'',申込日:c.acquiredDate?fmtDate(c.acquiredDate):'',継続:c.continued?'済':'',継続日:c.continuedDate?fmtDate(c.continuedDate):'','2週目お届け':c.week2Delivered?'済':'','2週目日時':c.week2Date||'','2週目メモ':c.week2Memo||'',訪問履歴JSON:JSON.stringify(c.visitHistory||[])}));const ws=XLSX.utils.json_to_sheet(d),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'顧客');XLSX.writeFile(wb,`顧客_${ts}.xlsx`);localStorage.setItem('lastExportDate',new Date().toISOString());checkBackupReminder();toast('Excel出力しました');}
 function confirmImport(){showCf('データ復元',`現在の${data.length}件が全削除されます。`,r=>{if(r)document.getElementById('imp-file').click();},'⚠️','復元','bg-red-500');}
 
 function importXL(e){
@@ -948,7 +1077,39 @@ function parseImpDate(v){
 function toast(m,i='✅'){document.getElementById('toast-msg').textContent=m;document.getElementById('toast-icon').textContent=i;document.getElementById('toast').classList.remove('hidden');setTimeout(()=>document.getElementById('toast').classList.add('hidden'),3000);}
 function hideToast(){document.getElementById('toast').classList.add('hidden');}
 
-if('serviceWorker'in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));}
+// === 改善①: Service Worker有効化 ===
+if('serviceWorker'in navigator){navigator.serviceWorker.register('./sw.js').then(r=>console.log('SW registered')).catch(e=>console.warn('SW failed',e));}
+
+// === 改善①: IndexedDB二重保存 ===
+const IDB_NAME='himawari_backup';const IDB_VER=1;
+function openIDB(){return new Promise((res,rej)=>{const req=indexedDB.open(IDB_NAME,IDB_VER);req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains('backup'))db.createObjectStore('backup');};req.onsuccess=e=>res(e.target.result);req.onerror=e=>rej(e);});}
+function idbSave(){openIDB().then(db=>{const tx=db.transaction('backup','readwrite');const st=tx.objectStore('backup');st.put(JSON.stringify(data),'cdata');st.put(idCnt.toString(),'idCnt');st.put(JSON.stringify(goals),'goals');}).catch(e=>console.warn('IDB save failed',e));}
+function idbRestore(){return openIDB().then(db=>{return new Promise((res,rej)=>{const tx=db.transaction('backup','readonly');const st=tx.objectStore('backup');const r1=st.get('cdata');r1.onsuccess=()=>{if(r1.result){try{const d=JSON.parse(r1.result);if(d.length>0&&data.length===0){data=d;const r2=st.get('idCnt');r2.onsuccess=()=>{if(r2.result)idCnt=parseInt(r2.result);save();render();toast('IndexedDBからデータを復旧しました','🔄');res(true);};r2.onerror=()=>res(false);}else res(false);}catch(e){res(false);}}else res(false);};r1.onerror=()=>res(false);});}).catch(()=>false);}
+
+// === 改善①: バックアップリマインダー ===
+function checkBackupReminder(){
+    const lastExport=localStorage.getItem('lastExportDate');
+    const banner=document.getElementById('backup-banner');
+    if(!banner)return;
+    if(data.length===0){banner.classList.add('hidden');return;}
+    if(!lastExport){banner.classList.remove('hidden');document.getElementById('backup-msg').textContent='⚠️ まだExcel保存していません。データ消失に備えバックアップを！';return;}
+    const days=Math.floor((Date.now()-new Date(lastExport).getTime())/(1000*60*60*24));
+    if(days>=3){banner.classList.remove('hidden');document.getElementById('backup-msg').textContent=`⚠️ 最後のExcel保存から${days}日経過。バックアップをお勧めします。`;}
+    else{banner.classList.add('hidden');}
+}
+
+// === 改善①: 容量チェック ===
+function checkStorageCapacity(){
+    try{
+        const used=new Blob([JSON.stringify(localStorage)]).size;
+        const pct=Math.round(used/5242880*100);
+        if(pct>80)toast(`⚠️ 保存容量 ${pct}% 使用中。Excelバックアップを推奨します`,'💾');
+    }catch(e){}
+}
+
+// 起動時にlocalStorageが空ならIndexedDBから復旧試行
+if(data.length===0){idbRestore().then(recovered=>{if(!recovered)render();checkBackupReminder();checkStorageCapacity();});}
+else{render();checkBackupReminder();checkStorageCapacity();}
 </script>
 </body>
 </html>
